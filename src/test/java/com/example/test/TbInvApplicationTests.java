@@ -21,7 +21,7 @@ class TbInvApplicationTests {
     
     @Test
     void contextLoads() {
-        System.out.println("✅ Spring Boot context loaded successfully!");
+        
     }
     
     @Test
