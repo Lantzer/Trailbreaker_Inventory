@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <!-- This is a reusable "head" piece -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">Trailbreaker Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <header th:fragment="header">
+        <h1>Trailbreaker Inventory Management</h1>
+    </header>
+
+    <nav th:fragment="navbar">
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/fermenters">Fermenters</a></li>
+            <li><a href="/brights">Brights</a></li>
+            <li><a href="/inventory">Inventory</a></li>
+            <li><a href="/outgoing-cider">Outgoing Cider</a></li>
+            <li><a href="/cooler-management">Cooler Management</a></li>
+            <li><a href="/login">Login</a></li>
+        </ul>
+    </nav>
+</body>
+</html>

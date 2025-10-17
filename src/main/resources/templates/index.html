@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <!-- Use the head fragment and pass the title variable -->
+    <th:block th:replace="~{/layouts/base :: head(${title})}"></th:block>
+    <body>
+        <!-- Include the header fragment -->
+        <div th:replace="~{/layouts/base :: header}"></div>
+
+        <!-- Include the navbar fragment -->
+        <div th:replace="~{/layouts/base :: navbar}"></div>
+
+        <main>
+            <div class="container">
+                <h1 th:text="${title}">Welcome to Trailbreaker Inventory</h1>
+                <p class="mt-4">Welcome to the Trailbreaker Inventory Management System. Use the navigation above to access different sections.</p>
+            </div>
+        </main>
+    </body>
+</html>

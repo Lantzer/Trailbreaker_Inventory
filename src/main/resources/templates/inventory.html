@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <th:block th:replace="~{/layouts/base :: head(${title})}"></th:block>
+    <body>
+        <div th:replace="~{/layouts/base :: header}"></div>
+        <div th:replace="~{/layouts/base :: navbar}"></div>
+
+        <main>
+            <div class="container">
+                <h1 th:text="${title}">Inventory</h1>
+                <p class="mt-4">Inventory management page - Content coming soon.</p>
+            </div>
+        </main>
+    </body>
+</html>
