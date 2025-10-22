@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -30,6 +31,8 @@ public class FermTank {
     private Integer id;
 
     @NotBlank(message = "Tank label is required")
+    @Pattern(regexp = "^[a-zA-Z0-9_-]+$",
+             message = "Tank label must contain only letters, numbers, hyphens, and underscores (URL-safe)")
     @Column(nullable = false, unique = true, length = 100)
     private String label;
 

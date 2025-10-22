@@ -7,9 +7,148 @@
 
         <main>
             <div class="container">
-                <h1 th:text="${title}">Fermenters</h1>
-                <p class="mt-4">Fermenter management page - Content coming soon.</p>
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h1 th:text="${title}">Fermenters</h1>
+                    <button class="btn btn-primary" onclick="alert('Create Tank form - TODO')">
+                        + Create New Tank
+                    </button>
+                </div>
+
+                <!-- Tank Grid -->
+                <div class="tank-grid">
+                    <!-- Loop through all tanks from database -->
+                    <div th:each="tank : ${tanks}"
+                         th:class="${tank.empty} ? 'tank-card tank-empty' : 'tank-card'">
+
+                        <div class="tank-header">
+                            <h3 class="tank-label" th:text="${tank.label}">FV-1</h3>
+                            <span th:class="${tank.empty} ? 'badge badge-empty' : 'badge badge-active'"
+                                  th:text="${tank.empty} ? 'Empty' : 'Active'">
+                                Active
+                            </span>
+                        </div>
+
+                        <div class="tank-body">
+                            <!-- Batch Name (if active) -->
+                            <p th:if="${!tank.empty}" class="batch-name">
+                                <strong>Batch:</strong>
+                                <span th:text="'Batch #' + ${tank.currentBatchId}">Batch Name</span>
+                            </p>
+                            <p th:if="${tank.empty}" class="batch-name empty-message">No active batch</p>
+
+                            <!-- Capacity Info -->
+                            <div class="capacity-info">
+                                <span class="capacity-text">
+                                    <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">0</span>
+                                    /
+                                    <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
+                                    <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                                </span>
+                                <span class="capacity-percent"
+                                      th:text="${#numbers.formatDecimal(tank.percentFull, 1, 0)} + '%'">
+                                    0%
+                                </span>
+                            </div>
+
+                            <!-- Capacity Bar with Color Coding -->
+                            <div class="capacity-bar">
+                                <div class="capacity-fill"
+                                     th:style="'width: ' + ${tank.percentFull} + '%'"
+                                     th:classappend="${tank.percentFull > 50} ? 'capacity-high' : (${tank.percentFull > 25} ? 'capacity-medium' : 'capacity-low')">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tank-footer">
+                            <button th:if="${!tank.empty}"
+                                    class="btn btn-sm btn-secondary"
+                                    th:data-tank-label="${tank.label}"
+                                    onclick="openTankModal(this.dataset.tankLabel)">
+                                View Details
+                            </button>
+                            <button th:if="${tank.empty}"
+                                    class="btn btn-sm btn-primary"
+                                    onclick="alert('Start Batch form - TODO')">
+                                Start Batch
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Show message if no tanks exist -->
+                <div th:if="${#lists.isEmpty(tanks)}" class="text-center mt-4">
+                    <p>No fermenter tanks found. Click "Create New Tank" to add one.</p>
+                </div>
             </div>
         </main>
+
+        <!-- Tank Details Modal (will be populated with real data later) -->
+        <div id="tankModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Tank Details</h2>
+                    <button class="modal-close" onclick="closeTankModal()">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <p>Tank details will be loaded here with AJAX - Coming soon!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- JavaScript for Modal -->
+        <script>
+            function openTankModal(tankLabel) {
+                const modal = document.getElementById('tankModal');
+                const modalBody = document.querySelector('#tankModal .modal-body');
+                const modalTitle = document.getElementById('modal-title');
+
+                // Update modal title
+                modalTitle.textContent = tankLabel + ' - Details';
+
+                // Show loading message
+                modalBody.innerHTML = '<p style="text-align: center; padding: 2rem;">Loading tank details...</p>';
+
+                // Show modal
+                modal.style.display = 'block';
+
+                // Fetch tank details via AJAX (using tank label in URL)
+                fetch('/fermenters/' + encodeURIComponent(tankLabel) + '/details')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to load tank details');
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        // Inject the HTML fragment into the modal body
+                        modalBody.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Error loading tank details:', error);
+                        modalBody.innerHTML = '<p style="text-align: center; color: #e74c3c; padding: 2rem;">Error loading tank details. Please try again.</p>';
+                    });
+            }
+
+            function closeTankModal() {
+                document.getElementById('tankModal').style.display = 'none';
+            }
+
+            // Close modal when clicking outside of it
+            window.onclick = function(event) {
+                const modal = document.getElementById('tankModal');
+                if (event.target == modal) {
+                    closeTankModal();
+                }
+            }
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeTankModal();
+                }
+            });
+        </script>
     </body>
 </html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!-- Tank Details Modal Fragment -->
+<div th:fragment="tank-details-content">
+
+    <!-- Tank Information Section -->
+    <div class="info-section">
+        <h3>Tank Information</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Tank Label</span>
+                <span class="info-value" th:text="${tank.label}">FV-1</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Capacity</span>
+                <span class="info-value">
+                    <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
+                    <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Current Quantity</span>
+                <span class="info-value">
+                    <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">90</span>
+                    <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Percent Full</span>
+                <span class="info-value" th:text="${#numbers.formatDecimal(tank.percentFull, 1, 0)} + '%'">90%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Information Section (only if active batch) -->
+    <div th:if="${batch != null}" class="info-section">
+        <h3>Current Batch</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Batch Name</span>
+                <span class="info-value" th:text="${batch.batchName}">Left Turn IPA</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Start Date</span>
+                <span class="info-value" th:text="${#temporals.format(batch.startDate, 'MMM dd, yyyy HH:mm')}">Oct 10, 2025</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Days in Fermentation</span>
+                <span class="info-value" th:text="${batch.daysInFermentation}">12</span>
+            </div>
+            <div class="info-item" th:if="${batch.yeastDate != null}">
+                <span class="info-label">Yeast Pitched</span>
+                <span class="info-value" th:text="${#temporals.format(batch.yeastDate, 'MMM dd, yyyy HH:mm')}">Oct 10, 2025</span>
+            </div>
+            <div class="info-item" th:if="${batch.lysozymeDate != null}">
+                <span class="info-label">Lysozyme Added</span>
+                <span class="info-value" th:text="${#temporals.format(batch.lysozymeDate, 'MMM dd, yyyy HH:mm')}">Oct 11, 2025</span>
+            </div>
+            <div class="info-item" th:if="${batch.completionDate != null}">
+                <span class="info-label">Completion Date</span>
+                <span class="info-value" th:text="${#temporals.format(batch.completionDate, 'MMM dd, yyyy HH:mm')}">Oct 22, 2025</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button th:if="${batch != null && batch.completionDate == null}"
+                class="btn btn-primary"
+                onclick="alert('Add Transaction form - TODO')">
+            + Add Transaction
+        </button>
+        <button th:if="${batch != null && batch.completionDate == null}"
+                class="btn btn-danger"
+                onclick="alert('Complete Batch - TODO')">
+            Complete Batch
+        </button>
+        <button th:if="${batch == null || batch.completionDate != null}"
+                class="btn btn-primary"
+                onclick="alert('Start New Batch - TODO')">
+            Start New Batch
+        </button>
+    </div>
+
+    <!-- Transaction History (only if active batch with transactions) -->
+    <div th:if="${transactions != null && !transactions.isEmpty()}" class="info-section">
+        <h3>Transaction History</h3>
+        <table class="transaction-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>User</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="txn : ${transactions}">
+                    <td th:text="${#temporals.format(txn.transactionDate, 'MMM dd, HH:mm')}">Oct 10, 14:30</td>
+                    <td>
+                        <span class="txn-type"
+                              th:classappend="${#strings.contains(txn.transactionType.typeName, 'Transfer')} ? 'txn-transfer' :
+                                             (${#strings.contains(txn.transactionType.typeName, 'Addition')} ? 'txn-addition' :
+                                             (${#strings.contains(txn.transactionType.typeName, 'Sample')} ? 'txn-sample' :
+                                             (${#strings.contains(txn.transactionType.typeName, 'Waste')} ? 'txn-waste' : '')))"
+                              th:text="${txn.transactionType.typeName}">
+                            Transfer In
+                        </span>
+                    </td>
+                    <td>
+                        <span th:text="${#numbers.formatDecimal(txn.quantity, 1, 2)}">92.00</span>
+                        <span th:text="${txn.transactionType.unit.abbreviation}">bbls</span>
+                    </td>
+                    <td th:text="${txn.userId != null ? 'User ' + txn.userId : '-'}">User 1</td>
+                    <td th:text="${txn.notes != null ? txn.notes : '-'}">Initial transfer from brew kettle</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Empty State Message -->
+    <div th:if="${batch == null}" class="info-section">
+        <p class="text-center" style="color: #95a5a6; font-style: italic;">
+            This tank is currently empty. Click "Start New Batch" to begin fermenting.
+        </p>
+    </div>
+
+</div>
+
+</html>
