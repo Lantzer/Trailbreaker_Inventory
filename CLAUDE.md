@@ -507,44 +507,89 @@ Set `spring.jpa.hibernate.ddl-auto=create` in `application-dev.properties` (alre
 ### Implementation Order
 
 1. ✅ **Schema design** (completed - `database_schema_corrected.md`)
-2. ⬜ **Database setup** (run DDL on PostgreSQL)
-3. ⬜ **Phase 1: Entities** (5 files)
-4. ⬜ **Phase 2: Repositories** (5 files)
-5. ⬜ **Unit tests for entities** (basic validation)
-6. ⬜ **Phase 3: Service layer** (1 file)
-7. ⬜ **Unit tests for service** (20 tests with Mockito)
-8. ⬜ **Phase 4: Controller** (enhance existing file)
-9. ⬜ **Fast tests for controller** (8 tests with MockMvc)
-10. ⬜ **Phase 5: View template** (enhance fermenters.html)
-11. ⬜ **Integration tests** (10 full-stack tests)
-12. ⬜ **Manual testing** (verify with `mvn spring-boot:run`)
+2. ⬜ **Database setup** (run DDL on PostgreSQL - can use H2 for now)
+3. ✅ **Phase 1: Entities** (5 files - COMPLETED)
+4. ✅ **Phase 2: Repositories** (5 files - COMPLETED)
+5. ✅ **Phase 3: Service layer** (1 file - COMPLETED)
+6. 🚧 **NEXT: Write tests for Phases 1-3** (CRITICAL - test what we built)
+7. ⬜ **Phase 4: Controller** (enhance existing file)
+8. ⬜ **Fast tests for controller** (8 tests with MockMvc)
+9. ⬜ **Phase 5: View template** (enhance fermenters.html)
+10. ⬜ **Integration tests** (10 full-stack tests)
+11. ⬜ **Manual testing** (verify with `mvn spring-boot:run`)
 
-**Estimated files to create/modify:** 18 files
-- 5 entities
-- 5 repositories
-- 1 service
-- 1 controller (existing)
-- 1 template (existing)
-- 3 test files
+**Files created so far:** 11 files (committed: dd433bd)
+- ✅ 5 entities (UnitType, TransactionType, FermTank, FermBatch, FermTransaction)
+- ✅ 5 repositories (with custom queries)
+- ✅ 1 service (FermenterService with complete business logic)
+
+**Files still to create:** ~7 files
+- 1 controller (existing stub to enhance)
+- 1 template (existing placeholder to enhance)
+- 3 test files (PRIORITY)
 - 2 DTOs/Forms
 
 ---
 
-### Next Steps
+## 📋 RESUME HERE TOMORROW
 
-When ready to begin implementation, start with:
+**Current Status:** Phases 1-3 complete (backend done), committed to git
+
+**Next Session Tasks:**
+
+### Priority 1: Write Tests for Existing Code (CRITICAL)
+Before continuing with controller/views, we MUST test what we've built:
+
+1. **Unit Tests for Service** (`FermenterServiceTest.java`) - ~20 tests
+   - Tank CRUD with validation
+   - Batch creation with initial transaction
+   - Transaction logic (yeast/lysozyme dates, quantity updates)
+   - Batch completion
+   - Error cases (capacity exceeded, negative quantities, completed batch transactions)
+
+2. **Entity Tests** (optional but recommended)
+   - Test business logic methods (`isActive()`, `getDaysInFermentation()`, etc.)
+   - Test constructors and null safety
+
+3. **Repository Tests** (optional - can use integration tests instead)
+   - Test custom queries work as expected
+
+**Run tests with:** `mvn test` (uses mock DataSource by default)
+
+### Priority 2: Continue Implementation
+After tests pass:
+
+4. **Phase 4: Controller** - Enhance `FermentersController.java`
+   - Implement endpoints for tank list, details, create
+   - Implement batch start/complete endpoints
+   - Implement transaction add endpoint
+   - Create DTOs/Forms (TankForm, BatchForm, TransactionForm)
+
+5. **Phase 5: Views** - Enhance `fermenters.html`
+   - Tank grid with Bootstrap cards
+   - Tank detail page with transaction history
+   - Forms for tank creation, batch start, transaction add
+
+6. **Phase 6: Full Integration Tests**
+   - End-to-end workflow tests
+   - Run with: `mvn -P real-db-test test` (requires PostgreSQL)
+
+---
+
+### Quick Reference Commands
+
 ```bash
-# 1. Review the corrected schema
-cat src/database_schema_corrected.md
+# Run tests (mock mode - fast)
+mvn test
 
-# 2. Create the first entity (UnitType.java)
-# Follow the JPA mapping examples in database_schema_corrected.md
+# Run specific test
+mvn test -Dtest=FermenterServiceTest
 
-# 3. Create corresponding repository
-# Follow ItemRepository.java pattern
+# Run with real PostgreSQL (when ready)
+mvn -P real-db-test test
 
-# 4. Write unit tests as you go
-# Use @UnitTest annotation, follow test pyramid
+# Run application with H2 (no PostgreSQL needed)
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 **Reference files for patterns:**

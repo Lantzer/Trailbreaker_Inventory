@@ -34,6 +34,7 @@ public class UnitType {
 
     /**
      * Constructor for creating a new unit type.
+     * Front end should ensure isVolume is provided; defaults to true if null.
      */
     public UnitType(String name, String abbreviation, Boolean isVolume) {
         this.name = name;
