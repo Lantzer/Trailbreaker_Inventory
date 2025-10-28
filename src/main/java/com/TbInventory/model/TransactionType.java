@@ -41,13 +41,24 @@ public class TransactionType {
     private Boolean affectsTankQuantity;
 
     /**
+     * Multiplier for quantity adjustments.
+     * 1 = adds to tank (e.g., Addition)
+     * -1 = removes from tank (e.g., Removal, Sale)
+     * 0 = no effect on quantity (e.g., Note)
+     */
+    @NotNull(message = "Quantity multiplier is required")
+    @Column(name = "quantity_multiplier", nullable = false)
+    private Integer quantityMultiplier;
+
+    /**
      * Constructor for creating a new transaction type.
      * Defaults affectsTankQuantity to true if not specified.
      */
-    public TransactionType(String typeName, String description, UnitType unit, Boolean affectsTankQuantity) {
+    public TransactionType(String typeName, String description, UnitType unit, Boolean affectsTankQuantity, Integer quantityMultiplier) {
         this.typeName = typeName;
         this.description = description;
         this.unit = unit;
         this.affectsTankQuantity = affectsTankQuantity != null ? affectsTankQuantity : true;
+        this.quantityMultiplier = quantityMultiplier != null ? quantityMultiplier : 1;
     }
 }

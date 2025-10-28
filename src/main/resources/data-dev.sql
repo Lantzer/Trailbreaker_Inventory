@@ -1,4 +1,4 @@
--- Seed Data for H2 Development Database
+-- Minimal Seed Data for H2 Development Database
 -- This file runs automatically when using the 'dev' profile
 -- Spring Boot will execute this after Hibernate creates the schema
 
@@ -16,100 +16,76 @@ INSERT INTO unit_type (name, abbreviation, is_volume) VALUES
 ('Ounces', 'oz', false);
 
 -- ============================================
--- Transaction Types
+-- Transaction Types (Fermenter-Specific Set)
 -- ============================================
+-- IMPORTANT: IDs must match frontend JavaScript in fermenters.html
+-- quantity_multiplier: 1 for additions, -1 for removals, 0 for non-quantity events
+-- NOTE: All volume-based types use GALLONS (unit_id = 2)
 
--- Volume transactions (affect tank quantity)
-INSERT INTO transaction_type (type_name, description, unit_id, affects_tank_quantity) VALUES
-('Transfer In', 'Transfer from previous tank or brew kettle', 1, true),
-('Transfer Out', 'Transfer to bright tank or next stage', 1, true),
-('Waste', 'Waste or drain from tank', 1, true),
-('Sample', 'Sample taken for testing', 1, true);
+-- ID 1: Cider Addition (affects tank quantity - adds volume)
+-- Used for both initial fill AND subsequent additions during fermentation
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(1, 'Cider Addition', 'Add apple cider to fermenter', 2, true, 1);
 
--- Weight transactions (do not affect tank quantity)
-INSERT INTO transaction_type (type_name, description, unit_id, affects_tank_quantity) VALUES
-('Yeast Addition', 'Add yeast to start fermentation', 4, false),
-('Lysozyme Addition', 'Add lysozyme for stability', 4, false),
-('Nutrient Addition', 'Add yeast nutrients', 4, false);
+-- ID 2: Yeast Addition (does not affect tank quantity - sets yeastDate)
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(2, 'Yeast Addition', 'Pitch yeast to start fermentation', 4, false, 0);
 
--- Note/observation transactions (use minimal unit, don't affect quantity)
-INSERT INTO transaction_type (type_name, description, unit_id, affects_tank_quantity) VALUES
-('Temperature Reading', 'Record temperature observation', 4, false),
-('pH Reading', 'Record pH measurement', 4, false),
-('Gravity Reading', 'Record specific gravity', 4, false),
-('Note', 'General note or observation', 4, false);
+-- ID 3: Lysozyme Addition (does not affect tank quantity - sets lysozymeDate)
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(3, 'Lysozyme Addition', 'Add lysozyme enzyme', 4, false, 0);
+
+-- ID 4: Transfer Out (affects tank quantity - removes volume)
+-- Moves finished product to bright tank
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(4, 'Transfer Out', 'Transfer to bright tank', 2, true, -1);
+
+-- ID 5: Sample (affects tank quantity - removes small volume)
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(5, 'Sample', 'Sample for testing', 2, true, -1);
+
+-- ID 6: Waste (affects tank quantity - removes volume)
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(6, 'Waste', 'Trub/sediment removal', 2, true, -1);
+
+-- ID 7: Note (does not affect tank quantity)
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(7, 'Note', 'General note or observation', 4, false, 0);
 
 -- ============================================
 -- Sample Fermenter Tanks for Testing
 -- ============================================
+-- NOTE: All capacities and quantities are in GALLONS
 
-INSERT INTO ferm_tank (label, current_quantity, capacity, capacity_unit_id, created_at) VALUES
-('FV-1', 90.00, 100.00, 1, CURRENT_TIMESTAMP),
-('FV-2', 36.00, 80.00, 1, CURRENT_TIMESTAMP),
-('FV-3', 20.00, 100.00, 1, CURRENT_TIMESTAMP),
-('FV-4', 0.00, 120.00, 1, CURRENT_TIMESTAMP),
-('FV-5', 0.00, 100.00, 1, CURRENT_TIMESTAMP),
-('FV-6', 80.00, 80.00, 1, CURRENT_TIMESTAMP);
+-- Empty tank for testing "Start Batch" functionality
+-- 100 bbls = 3200 gallons (1 bbl = 32 gal)
+INSERT INTO ferm_tank (label, current_quantity, capacity, created_at) VALUES
+('FV-1', 0.00, 3200.00, CURRENT_TIMESTAMP);
 
--- ============================================
--- Sample Batches (for tanks with active batches)
--- ============================================
-
-INSERT INTO ferm_batch (tank_id, batch_name, start_date, yeast_date, lysozyme_date, created_at) VALUES
-(1, 'Left Turn IPA', DATEADD('DAY', -12, CURRENT_TIMESTAMP), DATEADD('DAY', -12, CURRENT_TIMESTAMP), DATEADD('DAY', -11, CURRENT_TIMESTAMP), DATEADD('DAY', -12, CURRENT_TIMESTAMP)),
-(2, 'Honey Crisp Cider', DATEADD('DAY', -5, CURRENT_TIMESTAMP), DATEADD('DAY', -5, CURRENT_TIMESTAMP), NULL, DATEADD('DAY', -5, CURRENT_TIMESTAMP)),
-(3, 'Barrel Aged Stout', DATEADD('DAY', -28, CURRENT_TIMESTAMP), DATEADD('DAY', -28, CURRENT_TIMESTAMP), DATEADD('DAY', -27, CURRENT_TIMESTAMP), DATEADD('DAY', -28, CURRENT_TIMESTAMP)),
-(6, 'Pilsner', DATEADD('DAY', -3, CURRENT_TIMESTAMP), DATEADD('DAY', -3, CURRENT_TIMESTAMP), NULL, DATEADD('DAY', -3, CURRENT_TIMESTAMP));
-
--- Update tanks with current batch IDs
-UPDATE ferm_tank SET current_batch_id = 1 WHERE id = 1;
-UPDATE ferm_tank SET current_batch_id = 2 WHERE id = 2;
-UPDATE ferm_tank SET current_batch_id = 3 WHERE id = 3;
-UPDATE ferm_tank SET current_batch_id = 4 WHERE id = 6;
+-- Tank with active batch for testing "Add Transaction" functionality
+-- 50 bbls = 1600 gallons
+INSERT INTO ferm_tank (label, current_quantity, capacity, created_at) VALUES
+('FV-2', 1600.00, 3200.00, CURRENT_TIMESTAMP);
 
 -- ============================================
--- Sample Transactions (for FV-1 / Left Turn IPA)
+-- Sample Batch (for FV-2)
 -- ============================================
 
--- Initial transfer
-INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, transaction_date, user_id, notes) VALUES
-(1, 1, 92.00, DATEADD('DAY', -12, CURRENT_TIMESTAMP), 1, 'Initial transfer from brew kettle');
+INSERT INTO ferm_batch (tank_id, batch_name, start_date, created_at) VALUES
+(2, 'Test Batch', DATEADD('DAY', -2, CURRENT_TIMESTAMP), DATEADD('DAY', -2, CURRENT_TIMESTAMP));
 
--- Yeast addition
-INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, transaction_date, user_id, notes) VALUES
-(1, 5, 200.00, DATEADD('HOUR', -11, DATEADD('DAY', -12, CURRENT_TIMESTAMP)), 1, 'Pitched yeast strain WLP001');
-
--- Lysozyme addition
-INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, transaction_date, user_id, notes) VALUES
-(1, 6, 50.00, DATEADD('DAY', -11, CURRENT_TIMESTAMP), 2, 'Added lysozyme for stability');
-
--- Sample taken
-INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, transaction_date, user_id, notes) VALUES
-(1, 4, 2.00, DATEADD('HOUR', -2, CURRENT_TIMESTAMP), 1, 'Daily quality check');
+-- Update FV-2 with current batch ID
+UPDATE ferm_tank SET current_batch_id = 1 WHERE id = 2;
 
 -- ============================================
--- Sample Transactions (for FV-2 / Honey Crisp Cider)
+-- Sample Transactions (for FV-2 / Test Batch)
 -- ============================================
+-- NOTE: All quantities are in GALLONS (quantity_unit_id = 2)
 
-INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, transaction_date, user_id, notes) VALUES
-(2, 1, 40.00, DATEADD('DAY', -5, CURRENT_TIMESTAMP), 1, 'Transfer from pressing'),
-(2, 5, 150.00, DATEADD('HOUR', -4, DATEADD('DAY', -5, CURRENT_TIMESTAMP)), 2, 'Pitched cider yeast'),
-(2, 4, 4.00, DATEADD('DAY', -1, CURRENT_TIMESTAMP), 1, 'Sample for gravity reading');
+-- Initial cider addition (ID 1) - 50 bbls = 1600 gallons
+INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, quantity_unit_id, transaction_date, user_id, notes) VALUES
+(1, 1, 1600.00, 2, DATEADD('DAY', -2, CURRENT_TIMESTAMP), 1, 'Initial cider addition - Honeycrisp blend');
 
--- ============================================
--- Sample Transactions (for FV-3 / Barrel Aged Stout)
--- ============================================
-
-INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, transaction_date, user_id, notes) VALUES
-(3, 1, 100.00, DATEADD('DAY', -28, CURRENT_TIMESTAMP), 1, 'Initial transfer'),
-(3, 5, 300.00, DATEADD('HOUR', -6, DATEADD('DAY', -28, CURRENT_TIMESTAMP)), 1, 'Pitched yeast for high gravity'),
-(3, 6, 75.00, DATEADD('DAY', -27, CURRENT_TIMESTAMP), 2, 'Added lysozyme'),
-(3, 3, 80.00, DATEADD('DAY', -14, CURRENT_TIMESTAMP), 1, 'Transferred most volume to barrels');
-
--- ============================================
--- Sample Transactions (for FV-6 / Pilsner)
--- ============================================
-
-INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, transaction_date, user_id, notes) VALUES
-(4, 1, 80.00, DATEADD('DAY', -3, CURRENT_TIMESTAMP), 1, 'Initial transfer from brew kettle'),
-(4, 5, 180.00, DATEADD('HOUR', -5, DATEADD('DAY', -3, CURRENT_TIMESTAMP)), 2, 'Pitched lager yeast');
+-- Sample note (ID 7) - notes don't have quantity
+INSERT INTO ferm_transaction (batch_id, transaction_type_id, quantity, quantity_unit_id, transaction_date, user_id, notes) VALUES
+(1, 7, 0.00, 2, DATEADD('DAY', -1, CURRENT_TIMESTAMP), 1, 'Fermentation proceeding normally');

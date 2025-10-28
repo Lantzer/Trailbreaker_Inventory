@@ -15,15 +15,15 @@
             <div class="info-item">
                 <span class="info-label">Capacity</span>
                 <span class="info-value">
-                    <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
-                    <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                    <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">3200</span>
+                    <span>gal</span>
                 </span>
             </div>
             <div class="info-item">
                 <span class="info-label">Current Quantity</span>
                 <span class="info-value">
-                    <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">90</span>
-                    <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                    <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">1600</span>
+                    <span>gal</span>
                 </span>
             </div>
             <div class="info-item">
@@ -66,19 +66,43 @@
 
     <!-- Action Buttons -->
     <div class="action-buttons">
-        <button th:if="${batch != null && batch.completionDate == null}"
-                class="btn btn-primary"
-                onclick="alert('Add Transaction form - TODO')">
-            + Add Transaction
-        </button>
-        <button th:if="${batch != null && batch.completionDate == null}"
-                class="btn btn-danger"
-                onclick="alert('Complete Batch - TODO')">
-            Complete Batch
-        </button>
+        <!-- Active Batch Actions -->
+        <div th:if="${batch != null && batch.completionDate == null}" class="active-batch-actions">
+            <!-- Add to Batch Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" onclick="toggleDropdown('addDropdown')">
+                    Add to Batch ▼
+                </button>
+                <div id="addDropdown" class="dropdown-menu">
+                    <a href="#" onclick="openCiderAdditionModal(event)">Add Cider</a>
+                    <a href="#" onclick="openYeastAdditionModal(event)">Add Yeast</a>
+                    <a href="#" onclick="openLysozymeAdditionModal(event)">Add Lysozyme</a>
+                    <a href="#" onclick="openNoteModal(event)">Add Note</a>
+                </div>
+            </div>
+
+            <!-- Remove from Batch Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" onclick="toggleDropdown('removeDropdown')">
+                    Remove from Batch ▼
+                </button>
+                <div id="removeDropdown" class="dropdown-menu">
+                    <a href="#" onclick="openTransferOutModal(event)">Transfer to Bright Tank</a>
+                    <a href="#" onclick="openSampleModal(event)">Take Sample</a>
+                    <a href="#" onclick="openWasteModal(event)">Remove Waste</a>
+                </div>
+            </div>
+
+            <!-- Complete Batch Button -->
+            <button class="btn btn-danger" onclick="openCompleteBatchConfirm()">
+                Complete Batch
+            </button>
+        </div>
+
+        <!-- Empty Tank / Completed Batch Actions -->
         <button th:if="${batch == null || batch.completionDate != null}"
                 class="btn btn-primary"
-                onclick="alert('Start New Batch - TODO')">
+                onclick="openStartBatchForm()">
             Start New Batch
         </button>
     </div>
@@ -111,7 +135,7 @@
                     </td>
                     <td>
                         <span th:text="${#numbers.formatDecimal(txn.quantity, 1, 2)}">92.00</span>
-                        <span th:text="${txn.transactionType.unit.abbreviation}">bbls</span>
+                        <span th:text="${txn.quantityUnit.abbreviation}">gal</span>
                     </td>
                     <td th:text="${txn.userId != null ? 'User ' + txn.userId : '-'}">User 1</td>
                     <td th:text="${txn.notes != null ? txn.notes : '-'}">Initial transfer from brew kettle</td>
@@ -126,6 +150,68 @@
             This tank is currently empty. Click "Start New Batch" to begin fermenting.
         </p>
     </div>
+
+    <!-- Styles for Dropdowns and Action Buttons -->
+    <style>
+        .action-buttons {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .active-batch-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* Dropdown Styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-toggle {
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 220px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            z-index: 1000;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-menu a {
+            color: #2c3e50;
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .dropdown-menu a:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-menu a:hover {
+            background-color: #f8f9fa;
+            color: #1abc9c;
+        }
+    </style>
 
 </div>
 

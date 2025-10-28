@@ -91,24 +91,24 @@ class FermenterServiceTest {
         weightUnit = new UnitType("Grams", "g", false);
         weightUnit.setId(2);
 
-        // Create test transaction types
-        transferInType = new TransactionType("Transfer In", "Transfer from previous tank", volumeUnit, true);
+        // Create test transaction types (matching new IDs from data-dev.sql)
+        transferInType = new TransactionType("Cider Addition", "Add apple cider to fermenter", volumeUnit, true, 1);
         transferInType.setId(1);
 
-        transferOutType = new TransactionType("Transfer Out", "Transfer to next tank", volumeUnit, true);
-        transferOutType.setId(2);
+        yeastType = new TransactionType("Yeast Addition", "Pitch yeast to start fermentation", weightUnit, false, 0);
+        yeastType.setId(2);
 
-        yeastType = new TransactionType("Yeast Addition", "Add yeast to batch", weightUnit, false);
-        yeastType.setId(3);
+        lysozymeType = new TransactionType("Lysozyme Addition", "Add lysozyme enzyme", weightUnit, false, 0);
+        lysozymeType.setId(3);
 
-        lysozymeType = new TransactionType("Lysozyme Addition", "Add lysozyme to batch", weightUnit, false);
-        lysozymeType.setId(4);
+        transferOutType = new TransactionType("Transfer Out", "Transfer to bright tank", volumeUnit, true, -1);
+        transferOutType.setId(4);
 
-        wasteType = new TransactionType("Waste", "Waste/drain from tank", volumeUnit, true);
-        wasteType.setId(5);
+        wasteType = new TransactionType("Waste", "Trub/sediment removal", volumeUnit, true, -1);
+        wasteType.setId(6);
 
         // Create test tank
-        testTank = new FermTank("FV-1", new BigDecimal("100.00"), volumeUnit);
+        testTank = new FermTank("FV-1", new BigDecimal("100.00"));
         testTank.setId(1);
         testTank.setCurrentQuantity(new BigDecimal("50.00"));
 
@@ -169,7 +169,7 @@ class FermenterServiceTest {
     @Test
     void getAllTanks_ReturnsAllTanks() {
         // Arrange
-        List<FermTank> expectedTanks = Arrays.asList(testTank, new FermTank("FV-2", new BigDecimal("80"), volumeUnit));
+        List<FermTank> expectedTanks = Arrays.asList(testTank, new FermTank("FV-2", new BigDecimal("80")));
         when(tankRepository.findAll()).thenReturn(expectedTanks);
 
         // Act
@@ -256,7 +256,7 @@ class FermenterServiceTest {
         assertNotNull(created);
         assertEquals("FV-3", created.getLabel());
         assertEquals(new BigDecimal("120"), created.getCapacity());
-        assertEquals(volumeUnit, created.getCapacityUnit());
+        //assertEquals(volumeUnit, created.getCapacityUnit());
         verify(tankRepository).existsByLabel("FV-3");
         verify(unitTypeRepository).findById(1);
         verify(tankRepository).save(any(FermTank.class));
@@ -295,7 +295,7 @@ class FermenterServiceTest {
     @Test
     void getAvailableTanks_ReturnsEmptyTanks() {
         // Arrange
-        FermTank emptyTank = new FermTank("FV-2", new BigDecimal("80"), volumeUnit);
+        FermTank emptyTank = new FermTank("FV-2", new BigDecimal("80"));
         emptyTank.setCurrentBatchId(null);
         when(tankRepository.findByCurrentBatchIdIsNull()).thenReturn(Arrays.asList(emptyTank));
 
@@ -348,7 +348,7 @@ class FermenterServiceTest {
         LocalDateTime startDate = LocalDateTime.now();
 
         // Act
-        FermBatch created = fermenterService.startBatch(1, "New IPA", startDate, 1, new BigDecimal("30.00"), 100, "Initial transfer");
+        FermBatch created = fermenterService.startBatch(1, "New IPA", 1, new BigDecimal("30.00"), "Initial transfer");
 
         // Assert
         assertNotNull(created);
@@ -373,7 +373,7 @@ class FermenterServiceTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> fermenterService.startBatch(1, "New IPA", LocalDateTime.now(), 1, new BigDecimal("30"), 100, "Notes"));
+                () -> fermenterService.startBatch(1, "New IPA", 1, new BigDecimal("30"), "Notes"));
 
         assertTrue(exception.getMessage().contains("already has an active batch"));
         verify(batchRepository, never()).save(any(FermBatch.class));
@@ -397,7 +397,7 @@ class FermenterServiceTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> fermenterService.startBatch(1, "New IPA", LocalDateTime.now(), 999, new BigDecimal("30"), 100, "Notes"));
+                () -> fermenterService.startBatch(1, "New IPA", 999, new BigDecimal("30"), "Notes"));
 
         assertTrue(exception.getMessage().contains("Invalid transaction type"));
         verify(transactionRepository, never()).save(any(FermTransaction.class));

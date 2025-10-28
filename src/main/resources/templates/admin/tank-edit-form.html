@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <th:block th:replace="~{/layouts/base :: head(${title})}"></th:block>
+    <body>
+        <div th:replace="~{/layouts/base :: header}"></div>
+        <div th:replace="~{/layouts/base :: navbar}"></div>
+
+        <main>
+            <div class="container">
+                <h1 th:text="${title}">Edit Tank</h1>
+
+                <!-- Flash Messages -->
+                <div th:if="${error}" class="alert alert-error">
+                    <span th:text="${error}">Error message</span>
+                </div>
+
+                <!-- Current Tank Info -->
+                <div class="info-box">
+                    <h3>Current Information</h3>
+                    <div class="info-grid">
+                        <div>
+                            <strong>Label:</strong>
+                            <span th:text="${tank.label}">FV-1</span>
+                        </div>
+                        <div>
+                            <strong>Capacity:</strong>
+                            <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
+                            <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                        </div>
+                        <div>
+                            <strong>Current Quantity:</strong>
+                            <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">90</span>
+                            <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                        </div>
+                        <div>
+                            <strong>Status:</strong>
+                            <span th:if="${tank.currentBatchId != null}" class="badge badge-active">Active (Batch #<span th:text="${tank.currentBatchId}">1</span>)</span>
+                            <span th:if="${tank.currentBatchId == null}" class="badge badge-empty">Empty</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-container">
+                    <form th:action="@{/admin/tanks/{label}/update(label=${tank.label})}" method="post">
+                        <p class="form-note">Leave fields blank to keep current values. Only update what you want to change.</p>
+
+                        <div class="form-group">
+                            <label for="newLabel">New Tank Label (optional)</label>
+                            <input type="text"
+                                   id="newLabel"
+                                   name="newLabel"
+                                   pattern="[a-zA-Z0-9_-]+"
+                                   th:placeholder="${tank.label}"
+                                   title="Only letters, numbers, hyphens, and underscores allowed">
+                            <small class="form-help">URL-safe name (e.g., FV-1, FV-2A, Fermenter-01)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newCapacity">New Capacity (optional)</label>
+                            <input type="number"
+                                   id="newCapacity"
+                                   name="newCapacity"
+                                   step="10"
+                                   th:min="${tank.currentQuantity}"
+                                   th:placeholder="${#numbers.formatDecimal(tank.capacity, 1, 0)}">
+                            <small class="form-help warning" th:if="${tank.currentQuantity > 0}">
+                                ⚠️ Minimum capacity: <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 2)}">90.00</span>
+                                <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                                (current quantity)
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newCapacityUnitId">New Capacity Unit (optional)</label>
+                            <select id="newCapacityUnitId" name="newCapacityUnitId">
+                                <option value="" th:text="'Keep current (' + ${tank.capacityUnit.name} + ')'">Keep current (Barrels)</option>
+                                <option th:each="unit : ${units}"
+                                        th:value="${unit.id}"
+                                        th:text="${unit.name + ' (' + unit.abbreviation + ')'}">
+                                    Barrels (bbls)
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Update Tank</button>
+                            <a th:href="@{/admin/tanks}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <style>
+            .info-box {
+                background-color: #f8f9fa;
+                border: 2px solid #ecf0f1;
+                border-radius: 8px;
+                padding: 1.5rem;
+                margin: 1.5rem 0;
+            }
+
+            .info-box h3 {
+                margin-top: 0;
+                margin-bottom: 1rem;
+                color: #2c3e50;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+
+            .info-grid strong {
+                display: block;
+                color: #7f8c8d;
+                font-size: 0.85rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .form-container {
+                max-width: 600px;
+                margin: 2rem 0;
+            }
+
+            .form-note {
+                background-color: #d1ecf1;
+                border: 1px solid #bee5eb;
+                color: #0c5460;
+                padding: 1rem;
+                border-radius: 6px;
+                margin-bottom: 1.5rem;
+            }
+
+            .form-group {
+                margin-bottom: 1.5rem;
+            }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: #2c3e50;
+            }
+
+            .form-group input,
+            .form-group select {
+                width: 100%;
+                padding: 0.75rem;
+                border: 2px solid #ecf0f1;
+                border-radius: 6px;
+                font-size: 1rem;
+                transition: border-color 0.2s ease;
+            }
+
+            .form-group input:focus,
+            .form-group select:focus {
+                outline: none;
+                border-color: #1abc9c;
+            }
+
+            .form-help {
+                display: block;
+                margin-top: 0.5rem;
+                font-size: 0.85rem;
+                color: #7f8c8d;
+            }
+
+            .form-help.warning {
+                color: #e67e22;
+                font-weight: 500;
+            }
+
+            .form-actions {
+                display: flex;
+                gap: 1rem;
+                margin-top: 2rem;
+            }
+
+            .alert {
+                padding: 1rem;
+                border-radius: 6px;
+                margin-bottom: 1rem;
+            }
+
+            .alert-error {
+                background-color: #f8d7da;
+                border: 1px solid #f5c6cb;
+                color: #721c24;
+            }
+        </style>
+    </body>
+</html>

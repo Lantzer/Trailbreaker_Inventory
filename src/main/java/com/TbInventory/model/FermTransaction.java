@@ -39,6 +39,11 @@ public class FermTransaction {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal quantity;
 
+    @NotNull(message = "Quantity unit is required")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "quantity_unit_id", nullable = false)
+    private UnitType quantityUnit;
+
     @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transactionDate;
 
@@ -60,10 +65,11 @@ public class FermTransaction {
      * Frontend allows user to select transaction date (defaults to now).
      */
     public FermTransaction(Integer batchId, TransactionType transactionType, BigDecimal quantity,
-                           LocalDateTime transactionDate, Integer userId, String notes) {
+                           UnitType quantityUnit, LocalDateTime transactionDate, Integer userId, String notes) {
         this.batchId = batchId;
         this.transactionType = transactionType;
         this.quantity = quantity;
+        this.quantityUnit = quantityUnit;
         this.transactionDate = transactionDate != null ? transactionDate : LocalDateTime.now();
         this.userId = userId;
         this.notes = notes;

@@ -43,4 +43,26 @@ public interface FermTankRepository extends JpaRepository<FermTank, Integer> {
      * @return true if a tank with this label exists
      */
     boolean existsByLabel(String label);
+
+    /**
+     * Find all non-deleted tanks (deletedAt is null).
+     * This is the default view for operational pages.
+     * @return List of active (non-deleted) tanks
+     */
+    List<FermTank> findByDeletedAtIsNull();
+
+    /**
+     * Find all deleted tanks (deletedAt is not null).
+     * Used in admin pages to show archived tanks.
+     * @return List of soft-deleted tanks
+     */
+    List<FermTank> findByDeletedAtIsNotNull();
+
+    /**
+     * Find a non-deleted tank by label.
+     * Used for label-based lookups that should exclude deleted tanks.
+     * @param label The tank label
+     * @return Optional containing the tank if found and not deleted
+     */
+    Optional<FermTank> findByLabelAndDeletedAtIsNull(String label);
 }

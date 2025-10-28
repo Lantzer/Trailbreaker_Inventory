@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <th:block th:replace="~{/layouts/base :: head(${title})}"></th:block>
+    <body>
+        <div th:replace="~{/layouts/base :: header}"></div>
+        <div th:replace="~{/layouts/base :: navbar}"></div>
+
+        <main>
+            <div class="container">
+                <h1 th:text="${title}">Admin Dashboard</h1>
+
+                <div class="admin-grid">
+                    <div class="admin-card">
+                        <h3>Tank Management</h3>
+                        <p>Create, edit, and manage fermenter tanks</p>
+                        <a href="/admin/tanks" class="btn btn-primary">Manage Tanks</a>
+                    </div>
+
+                    <div class="admin-card">
+                        <h3>User Management</h3>
+                        <p>Manage users and permissions (Coming Soon)</p>
+                        <button class="btn btn-secondary" disabled>Coming Soon</button>
+                    </div>
+
+                    <div class="admin-card">
+                        <h3>Reports</h3>
+                        <p>View system reports and analytics (Coming Soon)</p>
+                        <button class="btn btn-secondary" disabled>Coming Soon</button>
+                    </div>
+
+                    <div class="admin-card">
+                        <h3>Settings</h3>
+                        <p>Configure system settings (Coming Soon)</p>
+                        <button class="btn btn-secondary" disabled>Coming Soon</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <style>
+            .admin-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 2rem;
+                margin-top: 2rem;
+            }
+
+            .admin-card {
+                background: white;
+                border: 2px solid #34495e;
+                border-radius: 8px;
+                padding: 2rem;
+                text-align: center;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .admin-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+
+            .admin-card h3 {
+                color: #2c3e50;
+                margin-bottom: 1rem;
+            }
+
+            .admin-card p {
+                color: #7f8c8d;
+                margin-bottom: 1.5rem;
+            }
+        </style>
+    </body>
+</html>

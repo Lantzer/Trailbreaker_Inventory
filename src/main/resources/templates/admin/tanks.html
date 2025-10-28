@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <th:block th:replace="~{/layouts/base :: head(${title})}"></th:block>
+    <body>
+        <div th:replace="~{/layouts/base :: header}"></div>
+        <div th:replace="~{/layouts/base :: navbar}"></div>
+
+        <main>
+            <div class="container">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h1 th:text="${title}">Tank Management</h1>
+                    <a href="/admin/tanks/new" class="btn btn-primary">+ Create New Tank</a>
+                </div>
+
+                <!-- Flash Messages -->
+                <div th:if="${success}" class="alert alert-success">
+                    <span th:text="${success}">Success message</span>
+                </div>
+                <div th:if="${error}" class="alert alert-error">
+                    <span th:text="${error}">Error message</span>
+                </div>
+
+                <!-- Tanks Table -->
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Label</th>
+                            <th>Capacity</th>
+                            <th>Current Quantity</th>
+                            <th>Status</th>
+                            <th>Batch</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="tank : ${tanks}" th:classappend="${tank.deleted} ? 'row-deleted' : ''">
+                            <td th:text="${tank.label}">FV-1</td>
+                            <td>
+                                <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
+                                <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                            </td>
+                            <td>
+                                <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">90</span>
+                                <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                            </td>
+                            <td>
+                                <span th:if="${tank.deleted}" class="badge badge-deleted">Deleted</span>
+                                <span th:if="${!tank.deleted && tank.currentBatchId != null}" class="badge badge-active">Active</span>
+                                <span th:if="${!tank.deleted && tank.currentBatchId == null}" class="badge badge-empty">Empty</span>
+                            </td>
+                            <td>
+                                <span th:if="${tank.currentBatchId != null}" th:text="'Batch #' + ${tank.currentBatchId}">Batch #1</span>
+                                <span th:if="${tank.currentBatchId == null}">-</span>
+                            </td>
+                            <td class="actions-cell">
+                                <a th:if="${!tank.deleted}"
+                                   th:href="@{/admin/tanks/{label}/edit(label=${tank.label})}"
+                                   class="btn btn-sm btn-secondary">Edit</a>
+                                <form th:if="${tank.deleted}"
+                                      th:action="@{/admin/tanks/{label}/restore(label=${tank.label})}"
+                                      method="post"
+                                      style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-primary">Restore</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Empty State -->
+                <div th:if="${#lists.isEmpty(tanks)}" class="text-center mt-4">
+                    <p>No tanks found. Click "Create New Tank" to add one.</p>
+                </div>
+            </div>
+        </main>
+
+        <style>
+            .admin-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 1rem;
+                background: white;
+            }
+
+            .admin-table thead {
+                background-color: #34495e;
+                color: white;
+            }
+
+            .admin-table th {
+                padding: 1rem;
+                text-align: left;
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 0.85rem;
+                letter-spacing: 0.5px;
+            }
+
+            .admin-table tbody tr {
+                border-bottom: 1px solid #ecf0f1;
+                transition: background-color 0.2s ease;
+            }
+
+            .admin-table tbody tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            .admin-table tbody tr.row-deleted {
+                opacity: 0.6;
+                background-color: #fef5f5;
+            }
+
+            .admin-table td {
+                padding: 1rem;
+                color: #2c3e50;
+            }
+
+            .actions-cell {
+                white-space: nowrap;
+            }
+
+            .actions-cell .btn {
+                margin-right: 0.5rem;
+            }
+
+            .badge-deleted {
+                background-color: #e74c3c;
+                color: white;
+            }
+
+            .alert {
+                padding: 1rem;
+                border-radius: 6px;
+                margin-bottom: 1rem;
+            }
+
+            .alert-success {
+                background-color: #d4edda;
+                border: 1px solid #c3e6cb;
+                color: #155724;
+            }
+
+            .alert-error {
+                background-color: #f8d7da;
+                border: 1px solid #f5c6cb;
+                color: #721c24;
+            }
+        </style>
+    </body>
+</html>

@@ -2,7 +2,10 @@ package com.TbInventory.service;
 
 import com.TbInventory.model.*;
 import com.TbInventory.repository.*;
-import jakarta.annotation.PostConstruct;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cglib.core.Local;
+import org.springframework.context.event.EventListener;
+import org.springframework.format.annotation.DurationFormat.Unit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,24 +51,25 @@ public class FermenterService {
     }
 
     /**
-     * Load all transaction types into cache on service startup.
-     * This runs once when the application starts.
+     * Load all transaction types into cache AFTER application is ready.
+     * This ensures SQL initialization scripts have run first.
      */
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void loadTransactionTypes() {
         transactionTypeRepository.findAll().forEach(type ->
             transactionTypeCache.put(type.getId(), type)
         );
+        System.out.println("Loaded " + transactionTypeCache.size() + " transaction types into cache");
     }
 
     // ==================== Tank Management Methods ====================
 
     /**
-     * Get all tanks.
-     * @return List of all fermenter tanks
+     * Get all non-deleted tanks (for operational views).
+     * @return List of active fermenter tanks
      */
     public List<FermTank> getAllTanks() {
-        return tankRepository.findAll();
+        return tankRepository.findByDeletedAtIsNull();
     }
 
     /**
@@ -80,13 +84,13 @@ public class FermenterService {
     }
 
     /**
-     * Get tank by label (for label-based URLs).
+     * Get non-deleted tank by label (for label-based URLs).
      * @param label Tank label (e.g., "FV-1")
      * @return The tank
-     * @throws RuntimeException if tank not found
+     * @throws RuntimeException if tank not found or deleted
      */
     public FermTank getTankByLabel(String label) {
-        return tankRepository.findByLabel(label)
+        return tankRepository.findByLabelAndDeletedAtIsNull(label)
             .orElseThrow(() -> new RuntimeException("Tank not found with label: " + label));
     }
 
@@ -104,15 +108,17 @@ public class FermenterService {
             throw new RuntimeException("Tank with label '" + label + "' already exists");
         }
 
+        /* REMOVED: Capacity is always in gallons
         // Validation: Capacity unit must be a volume unit
-        UnitType unit = unitTypeRepository.findById(capacityUnitId)
-            .orElseThrow(() -> new RuntimeException("Unit type not found: " + capacityUnitId));
+         UnitType unit = unitTypeRepository.findById(capacityUnitId)
+             .orElseThrow(() -> new RuntimeException("Unit type not found: " + capacityUnitId));
 
         if (!unit.getIsVolume()) {
             throw new RuntimeException("Tank capacity must use volume units (barrels, gallons), not weight units");
         }
+        */
 
-        FermTank tank = new FermTank(label, capacity, unit);
+        FermTank tank = new FermTank(label, capacity);
         return tankRepository.save(tank);
     }
 
@@ -132,6 +138,110 @@ public class FermenterService {
         return tankRepository.findByCurrentBatchIdIsNotNull();
     }
 
+    // ==================== Admin Tank Management Methods ====================
+
+    /**
+     * Get all tanks including soft-deleted ones (admin view).
+     * @return List of all tanks
+     */
+    public List<FermTank> getAllTanksIncludingDeleted() {
+        return tankRepository.findAll();
+    }
+
+    /**
+     * Get all available unit types (for form dropdowns).
+     * @return List of all unit types
+     */
+    public List<UnitType> getAllUnits() {
+        return unitTypeRepository.findAll();
+    }
+
+    /**
+     * Get all volume unit types (for tank capacity dropdowns).
+     * @return List of volume units
+     */
+    public List<UnitType> getVolumeUnits() {
+        return unitTypeRepository.findAll().stream()
+            .filter(UnitType::getIsVolume)
+            .toList();
+    }
+
+    /**
+     * Update tank details using builder pattern.
+     * @param currentLabel Current tank label
+     * @param updateRequest Update request with optional fields
+     * @return Updated tank
+     * @throws RuntimeException if validation fails
+     */
+    public FermTank updateTank(String currentLabel, TankUpdateRequest updateRequest) {
+        FermTank tank = getTankByLabel(currentLabel);
+
+        // Update label if provided
+        if (updateRequest.hasLabelUpdate()) {
+            String newLabel = updateRequest.getNewLabel();
+            // Validation: If changing label, check for duplicates
+            if (!currentLabel.equals(newLabel) && tankRepository.existsByLabel(newLabel)) {
+                throw new RuntimeException("Tank with label '" + newLabel + "' already exists");
+            }
+            tank.setLabel(newLabel);
+        }
+
+        // Update capacity if provided
+        if (updateRequest.hasCapacityUpdate()) {
+            BigDecimal newCapacity = updateRequest.getNewCapacity();
+            Integer newCapacityUnitId = updateRequest.getNewCapacityUnitId();
+
+            // Validation: Capacity unit must be a volume unit
+            UnitType unit = unitTypeRepository.findById(newCapacityUnitId)
+                .orElseThrow(() -> new RuntimeException("Unit type not found: " + newCapacityUnitId));
+
+            if (!unit.getIsVolume()) {
+                throw new RuntimeException("Tank capacity must use volume units (barrels, gallons), not weight units");
+            }
+
+            // Validation: New capacity must be >= current quantity
+            if (newCapacity.compareTo(tank.getCurrentQuantity()) < 0) {
+                throw new RuntimeException(
+                    "New capacity (" + newCapacity + " " + unit.getAbbreviation() +
+                    ") cannot be less than current quantity (" + tank.getCurrentQuantity() +
+                    "gallons)"
+                );
+            }
+
+            tank.setCapacity(newCapacity);
+            
+            // REMOVED: Capacity is always in gallons
+            //tank.setCapacityUnit(unit);
+        }
+
+        return tankRepository.save(tank);
+    }
+
+    /**
+     * Soft delete a tank (marks as deleted without removing from database).
+     * @param label Tank label
+     * @return The deleted tank
+     * @throws RuntimeException if tank not found
+     */
+    public FermTank softDeleteTank(String label) {
+        FermTank tank = getTankByLabel(label);
+        tank.softDelete();
+        return tankRepository.save(tank);
+    }
+
+    /**
+     * Restore a soft-deleted tank.
+     * @param label Tank label
+     * @return The restored tank
+     * @throws RuntimeException if tank not found
+     */
+    public FermTank restoreTank(String label) {
+        FermTank tank = tankRepository.findByLabel(label)
+            .orElseThrow(() -> new RuntimeException("Tank not found with label: " + label));
+        tank.restore();
+        return tankRepository.save(tank);
+    }
+
     // ==================== Batch Management Methods ====================
 
     /**
@@ -148,9 +258,13 @@ public class FermenterService {
      * @return The created batch
      * @throws RuntimeException if validation fails
      */
-    public FermBatch startBatch(Integer tankId, String batchName, LocalDateTime startDate,
+    public FermBatch startBatch(Integer tankId, String batchName,
                                Integer transactionTypeId, BigDecimal initialQuantity,
-                               Integer userId, String notes) {
+                               String notes) {
+
+        //Mock userId for now, should be retrieved from auth context
+        Integer userId = 1;
+
         // 1. Validate tank exists and is empty
         FermTank tank = getTankById(tankId);
         if (tank.getCurrentBatchId() != null) {
@@ -158,7 +272,7 @@ public class FermenterService {
         }
 
         // 2. Create the batch
-        FermBatch batch = new FermBatch(tankId, batchName, startDate);
+        FermBatch batch = new FermBatch(tankId, batchName, LocalDateTime.now());
         batch = batchRepository.save(batch);
 
         // 3. Create the initial transaction
@@ -167,11 +281,21 @@ public class FermenterService {
             throw new RuntimeException("Invalid transaction type: " + transactionTypeId);
         }
 
+        // 4. quantityUnit is always gallons for fermenter
+        UnitType quantityUnit = unitTypeRepository.findByAbbreviation("gal")
+            .orElseThrow(() -> new RuntimeException("Volume unit 'gal' not found"));
+        
+        // If notes is empty, fill with default "Initial fill"
+        if (notes == null || notes.trim().isEmpty()) {
+            notes = "Initial fill";
+        }
+
         FermTransaction transaction = new FermTransaction(
             batch.getId(),
             txnType,
             initialQuantity,
-            startDate, // Use batch start date for first transaction
+            quantityUnit,
+            batch.getCreatedAt(), // Use batch start date for first transaction
             userId,
             notes
         );
@@ -246,42 +370,37 @@ public class FermenterService {
             throw new RuntimeException("Invalid transaction type: " + transactionTypeId);
         }
 
-        // 3. Create transaction
+        // 3. quantityUnit is always gallons for fermenter
+        UnitType quantityUnit = unitTypeRepository.findByAbbreviation("gal")
+            .orElseThrow(() -> new RuntimeException("Volume unit 'gal' not found"));
+
+        // 4. Create transaction
         FermTransaction transaction = new FermTransaction(
             batchId,
             type,
             quantity,
-            transactionDate,
+            quantityUnit,
+            LocalDateTime.now(),
             userId,
             notes
         );
         transaction = transactionRepository.save(transaction);
 
-        // 4. Business logic: Update batch dates for yeast/lysozyme
-        boolean batchUpdated = false;
-        if ("Yeast Addition".equals(type.getTypeName()) && batch.getYeastDate() == null) {
+        // 4. Special business logic for specific transaction types
+        if (type.getId() == 2) { // Yeast Addition
             batch.setYeastDate(transactionDate);
-            batchUpdated = true;
-        } else if ("Lysozyme Addition".equals(type.getTypeName()) && batch.getLysozymeDate() == null) {
+            batchRepository.save(batch);
+        } else if (type.getId() == 3) { // Lysozyme Addition
             batch.setLysozymeDate(transactionDate);
-            batchUpdated = true;
-        }
-
-        if (batchUpdated) {
             batchRepository.save(batch);
         }
 
         // 5. Business logic: Update tank quantity if transaction affects volume
         if (type.getAffectsTankQuantity()) {
             FermTank tank = getTankById(batch.getTankId());
-            BigDecimal adjustment = quantity;
 
-            // Negative adjustment for removals (transfer out, waste, sample)
-            if (type.getTypeName().contains("Out") ||
-                type.getTypeName().contains("Waste") ||
-                type.getTypeName().contains("Sample")) {
-                adjustment = adjustment.negate();
-            }
+            // Apply quantity multiplier (1 for additions, -1 for removals, 0 for notes)
+            BigDecimal adjustment = quantity.multiply(new BigDecimal(type.getQuantityMultiplier()));
 
             BigDecimal newQuantity = tank.getCurrentQuantity().add(adjustment);
 
@@ -328,7 +447,8 @@ public class FermenterService {
 
     /**
      * Complete a batch (mark as finished).
-     * Clears the tank's current batch reference and resets quantity to zero.
+     * Automatically creates a "Waste" transaction for any remaining volume,
+     * then clears the tank's current batch reference and resets quantity to zero.
      *
      * @param batchId Batch ID
      * @return The completed batch
@@ -341,12 +461,38 @@ public class FermenterService {
             throw new RuntimeException("Batch is already completed");
         }
 
-        // 2. Mark batch as complete
+        // 2. Get tank and check for remaining volume
+        FermTank tank = getTankById(batch.getTankId());
+
+        // 3. quantityUnit is always gallons for fermenter
+        UnitType quantityUnit = unitTypeRepository.findByAbbreviation("gal")
+            .orElseThrow(() -> new RuntimeException("Volume unit 'gal' not found"));
+
+        // 3. Auto-create waste transaction for remaining volume if any exists
+        if (tank.getCurrentQuantity().compareTo(BigDecimal.ZERO) > 0) {
+            TransactionType wasteType = transactionTypeCache.get(6); // Waste type ID = 6
+            if (wasteType == null) {
+                throw new RuntimeException("Waste transaction type not found (ID 6)");
+            }
+
+            FermTransaction wasteTransaction = new FermTransaction(
+                batchId,
+                wasteType,
+                tank.getCurrentQuantity(), // Remaining volume
+                quantityUnit,
+                LocalDateTime.now(),
+                // TODO: Get user ID from auth context, for now use null
+                null,
+                "Auto-generated waste transaction on batch completion"
+            );
+            transactionRepository.save(wasteTransaction);
+        }
+
+        // 4. Mark batch as complete
         batch.setCompletionDate(LocalDateTime.now());
         batch = batchRepository.save(batch);
 
-        // 3. Clear the tank's current batch and reset quantity
-        FermTank tank = getTankById(batch.getTankId());
+        // 5. Clear the tank's current batch and reset quantity
         if (tank.getCurrentBatchId() != null && tank.getCurrentBatchId().equals(batchId)) {
             tank.setCurrentBatchId(null);
             tank.setCurrentQuantity(BigDecimal.ZERO);

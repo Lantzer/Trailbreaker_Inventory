@@ -14,11 +14,11 @@ import java.time.LocalDateTime;
 
 /**
  * Represents a physical fermenter tank.
+ * Capacity is always stored in gallons.
  *
  * TODO: Create edit tank page in frontend to allow updating:
  *       - label
- *       - capacity
- *       - capacityUnit
+ *       - capacity (in gallons)
  */
 @Entity
 @Table(name = "ferm_tank")
@@ -45,15 +45,13 @@ public class FermTank {
     @NotNull(message = "Capacity is required")
     @Min(value = 0, message = "Capacity must be positive")
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal capacity;
-
-    @NotNull(message = "Capacity unit is required")
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "capacity_unit_id", nullable = false)
-    private UnitType capacityUnit;
+    private BigDecimal capacity; // Always in gallons
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -61,12 +59,33 @@ public class FermTank {
     }
 
     /**
-     * Constructor for creating a new tank.
+     * Soft delete this tank (marks as deleted without removing from database).
      */
-    public FermTank(String label, BigDecimal capacity, UnitType capacityUnit) {
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Restore a soft-deleted tank.
+     */
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    /**
+     * Check if this tank is soft-deleted.
+     */
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
+
+    /**
+     * Constructor for creating a new tank.
+     * Capacity is always in gallons.
+     */
+    public FermTank(String label, BigDecimal capacity) {
         this.label = label;
         this.capacity = capacity;
-        this.capacityUnit = capacityUnit;
         this.currentQuantity = BigDecimal.ZERO;
     }
 

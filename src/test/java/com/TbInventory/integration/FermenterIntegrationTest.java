@@ -96,23 +96,23 @@ class FermenterIntegrationTest {
                 return unitTypeRepository.save(unit);
             });
 
-        // Create transaction types if they don't exist
-        transferInType = transactionTypeRepository.findByTypeName("Transfer In")
+        // Create transaction types if they don't exist (matching new IDs from data-dev.sql)
+        transferInType = transactionTypeRepository.findByTypeName("Cider Addition")
             .orElseGet(() -> {
-                TransactionType type = new TransactionType("Transfer In",
-                    "Transfer from previous tank", volumeUnit, true);
+                TransactionType type = new TransactionType("Cider Addition",
+                    "Add apple cider to fermenter", volumeUnit, true, 1);
                 return transactionTypeRepository.save(type);
             });
 
         yeastType = transactionTypeRepository.findByTypeName("Yeast Addition")
             .orElseGet(() -> {
                 TransactionType type = new TransactionType("Yeast Addition",
-                    "Add yeast to batch", weightUnit, false);
+                    "Pitch yeast to start fermentation", weightUnit, false, 0);
                 return transactionTypeRepository.save(type);
             });
 
         // Create test tank
-        testTank = new FermTank("INT-TEST-TANK-1", new BigDecimal("100"), volumeUnit);
+        testTank = new FermTank("INT-TEST-TANK-1", new BigDecimal("100"));
         testTank = tankRepository.save(testTank);
     }
 
@@ -142,10 +142,8 @@ class FermenterIntegrationTest {
             FermBatch batch = fermenterService.startBatch(
                 testTank.getId(),
                 "Integration Test Batch",
-                LocalDateTime.now(),
                 transferInType.getId(), // This ID must be in the cache
                 new BigDecimal("50.00"),
-                1, // User ID
                 "Testing cache"
             );
             assertNotNull(batch);
@@ -160,10 +158,8 @@ class FermenterIntegrationTest {
         FermBatch batch = fermenterService.startBatch(
             testTank.getId(),
             "Test IPA",
-            LocalDateTime.now(),
             transferInType.getId(),
             new BigDecimal("60.00"),
-            1,
             "Initial transfer"
         );
 
@@ -190,10 +186,8 @@ class FermenterIntegrationTest {
         FermBatch batch = fermenterService.startBatch(
             testTank.getId(),
             "Test Batch",
-            LocalDateTime.now(),
             transferInType.getId(),
             new BigDecimal("30.00"),
-            1,
             "Initial"
         );
 
@@ -223,10 +217,8 @@ class FermenterIntegrationTest {
         FermBatch batch = fermenterService.startBatch(
             testTank.getId(),
             "Full Workflow IPA",
-            LocalDateTime.now(),
             transferInType.getId(),
             new BigDecimal("80.00"),
-            1,
             "Starting batch"
         );
 
@@ -275,10 +267,8 @@ class FermenterIntegrationTest {
             FermBatch batch = fermenterService.startBatch(
                 testTank.getId(),
                 "Cache Validation Batch",
-                LocalDateTime.now(),
                 allTypes.get(0).getId(), // Use first type
                 new BigDecimal("40.00"),
-                1,
                 "Testing"
             );
 
