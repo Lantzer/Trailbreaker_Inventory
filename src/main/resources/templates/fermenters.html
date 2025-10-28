@@ -10,9 +10,6 @@
                 <!-- Page Header -->
                 <div class="page-header">
                     <h1 th:text="${title}">Fermenters</h1>
-                    <button class="btn btn-primary" onclick="alert('Create Tank form - TODO')">
-                        + Create New Tank
-                    </button>
                 </div>
 
                 <!-- Tank Grid -->
@@ -40,12 +37,15 @@
                             <!-- Capacity Info -->
                             <div class="capacity-info">
                                 <span class="capacity-text">
-                                    <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">0</span>
+                                    <span class="current-quantity"
+                                          th:id="'tank-qty-' + ${tank.label}"
+                                          th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">0</span>
                                     /
-                                    <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
-                                    <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                                    <span class="max-capacity" th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">3200</span>
+                                    <span>gal</span>
                                 </span>
                                 <span class="capacity-percent"
+                                      th:id="'tank-pct-' + ${tank.label}"
                                       th:text="${#numbers.formatDecimal(tank.percentFull, 1, 0)} + '%'">
                                     0%
                                 </span>
@@ -54,6 +54,7 @@
                             <!-- Capacity Bar with Color Coding -->
                             <div class="capacity-bar">
                                 <div class="capacity-fill"
+                                     th:id="'tank-fill-' + ${tank.label}"
                                      th:style="'width: ' + ${tank.percentFull} + '%'"
                                      th:classappend="${tank.percentFull > 50} ? 'capacity-high' : (${tank.percentFull > 25} ? 'capacity-medium' : 'capacity-low')">
                                 </div>
@@ -63,13 +64,15 @@
                         <div class="tank-footer">
                             <button th:if="${!tank.empty}"
                                     class="btn btn-sm btn-secondary"
-                                    th:data-tank-label="${tank.label}"
-                                    onclick="openTankModal(this.dataset.tankLabel)">
+                                    th:attr="data-tank-label=${tank.label}"
+                                    onclick="openTankModal(this.getAttribute('data-tank-label'))">
                                 View Details
                             </button>
                             <button th:if="${tank.empty}"
                                     class="btn btn-sm btn-primary"
-                                    onclick="alert('Start Batch form - TODO')">
+                                    th:data-tank-id="${tank.id}"
+                                    th:data-tank-label="${tank.label}"
+                                    onclick="openStartBatchForm(this.getAttribute('data-tank-id'), this.getAttribute('data-tank-label'))">
                                 Start Batch
                             </button>
                         </div>
@@ -97,6 +100,288 @@
             </div>
         </div>
 
+        <!-- Transaction Form Modals (7 Specific Types) -->
+
+        <!-- 1. Cider Addition Modal (ID 1) -->
+        <div id="ciderAdditionModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Add Cider</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('ciderAdditionModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="ciderAdditionForm" onsubmit="submitTransaction(event, 1)">
+                        <!-- Hidden field: always use gallons -->
+                        <input type="hidden" name="unitId" value="2">
+
+                        <div class="form-group">
+                            <label for="ciderVolume">Volume (gallons) *</label>
+                            <input type="number" id="ciderVolume" name="quantity"
+                                   step="0.1" min="0" required placeholder="Enter volume in gallons">
+                        </div>
+                        <div class="form-group">
+                            <label for="ciderNotes">Notes (optional)</label>
+                            <textarea id="ciderNotes" name="notes" rows="3"
+                                      placeholder="e.g., Honeycrisp blend, source, gravity..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('ciderAdditionModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Cider</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Yeast Addition Modal (ID 2) -->
+        <div id="yeastAdditionModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Add Yeast</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('yeastAdditionModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="yeastAdditionForm" onsubmit="submitTransaction(event, 2)">
+                        <div class="form-group">
+                            <label for="yeastAmount">Amount *</label>
+                            <input type="number" id="yeastAmount" name="quantity"
+                                   step="0.1" min="0" required placeholder="Enter amount">
+                        </div>
+                        <div class="form-group">
+                            <label for="yeastUnit">Unit *</label>
+                            <select id="yeastUnit" name="unitId" required>
+                                <option value="">Select unit...</option>
+                                <option value="4">g</option>
+                                <option value="6">lbs</option>
+                                <option value="7">oz</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="yeastStrain">Yeast Strain (optional)</label>
+                            <input type="text" id="yeastStrain" name="yeastStrain"
+                                   placeholder="e.g., US-05, Nottingham, EC-1118">
+                        </div>
+                        <div class="form-group">
+                            <label for="yeastNotes">Notes (optional)</label>
+                            <textarea id="yeastNotes" name="notes" rows="3"
+                                      placeholder="Rehydrated, temperature, etc..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('yeastAdditionModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Yeast</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Lysozyme Addition Modal (ID 3) -->
+        <div id="lysozymeAdditionModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Add Lysozyme</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('lysozymeAdditionModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="lysozymeAdditionForm" onsubmit="submitTransaction(event, 3)">
+                        <div class="form-group">
+                            <label for="lysozymeAmount">Amount *</label>
+                            <input type="number" id="lysozymeAmount" name="quantity"
+                                   step="0.1" min="0" required placeholder="Enter amount">
+                        </div>
+                        <div class="form-group">
+                            <label for="lysozymeUnit">Unit *</label>
+                            <select id="lysozymeUnit" name="unitId" required>
+                                <option value="">Select unit...</option>
+                                <option value="4">g</option>
+                                <option value="7">oz</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="lysozymeNotes">Notes (optional)</label>
+                            <textarea id="lysozymeNotes" name="notes" rows="3"
+                                      placeholder="Add any notes..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('lysozymeAdditionModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Lysozyme</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Transfer Out Modal (ID 4) -->
+        <div id="transferOutModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Transfer to Bright Tank</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('transferOutModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="transferOutForm" onsubmit="submitTransaction(event, 4)">
+                        <!-- Hidden field: always use gallons -->
+                        <input type="hidden" name="unitId" value="2">
+
+                        <div class="form-group">
+                            <label for="transferDestination">Destination Tank *</label>
+                            <input type="text" id="transferDestination" name="destinationTank" required
+                                   placeholder="e.g., BT-1, BT-2">
+                            <small class="form-help">This will become a dropdown when bright tanks are implemented</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="transferVolume">Volume (gallons) *</label>
+                            <input type="number" id="transferVolume" name="quantity"
+                                   step="0.1" min="0" required placeholder="Enter volume in gallons">
+                        </div>
+                        <div class="form-group">
+                            <label for="transferNotes">Notes (optional)</label>
+                            <textarea id="transferNotes" name="notes" rows="3"
+                                      placeholder="Final gravity, clarification, etc..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('transferOutModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Transfer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Sample Modal (ID 5) -->
+        <div id="sampleModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Take Sample</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('sampleModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="sampleForm" onsubmit="submitTransaction(event, 5)">
+                        <!-- Hidden field: always use gallons -->
+                        <input type="hidden" name="unitId" value="2">
+
+                        <div class="form-group">
+                            <label for="sampleVolume">Volume (gallons) *</label>
+                            <input type="number" id="sampleVolume" name="quantity"
+                                   step="0.01" min="0" required placeholder="Enter volume in gallons">
+                            <small class="form-help">Tip: 1 oz = 0.0078 gal</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="sampleNotes">Notes (optional)</label>
+                            <textarea id="sampleNotes" name="notes" rows="3"
+                                      placeholder="e.g., Gravity test, pH reading, tasting notes..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('sampleModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Record Sample</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Waste Modal (ID 6) -->
+        <div id="wasteModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Remove Waste</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('wasteModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="wasteForm" onsubmit="submitTransaction(event, 6)">
+                        <!-- Hidden field: always use gallons -->
+                        <input type="hidden" name="unitId" value="2">
+
+                        <div class="form-group">
+                            <label for="wasteVolume">Volume (gallons) *</label>
+                            <input type="number" id="wasteVolume" name="quantity"
+                                   step="0.1" min="0" required placeholder="Enter volume in gallons">
+                        </div>
+                        <div class="form-group">
+                            <label for="wasteNotes">Notes (optional)</label>
+                            <textarea id="wasteNotes" name="notes" rows="3"
+                                      placeholder="e.g., Trub dump, sediment removal..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('wasteModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Record Waste</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Note Modal (ID 7) -->
+        <div id="noteModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Add Note</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('noteModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="noteForm" onsubmit="submitTransaction(event, 7)">
+                        <div class="form-group">
+                            <label for="noteText">Note *</label>
+                            <textarea id="noteText" name="notes" rows="5" required
+                                      placeholder="Temperature reading, visual inspection, etc..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('noteModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Note</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start New Batch Modal -->
+        <div id="startBatchModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Start New Batch</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('startBatchModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="startBatchForm" onsubmit="startBatch(event)">
+                        <p class="info-text">Starting a new batch in fermenter: <strong id="start-batch-tank-label">FV-1</strong></p>
+
+                        <!-- Hidden field to store tank ID -->
+                        <input type="hidden" id="start-batch-tank-id" name="tankId">
+
+                        <div class="form-group">
+                            <label>Batch Number</label>
+                            <input type="text" value="Auto-generated" disabled>
+                            <small class="form-help">System will assign next available batch number</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="batchLabel">Batch Label *</label>
+                            <input type="text" id="batchLabel" name="batchLabel" required
+                                   placeholder="e.g., Left Turn, Cosmic Crisp">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="initialQuantity">Initial Cider Quantity (gallons) *</label>
+                            <input type="number" id="initialQuantity" name="quantity"
+                                   step="0.1" min="0" required
+                                   placeholder="Enter quantity in gallons">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="startBatchNotes">Notes (optional)</label>
+                            <textarea id="startBatchNotes" name="notes" rows="3"
+                                      placeholder="Apple variety, source, gravity, etc..."></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeTransactionModal('startBatchModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Start Batch</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- JavaScript for Modal -->
         <script>
             function openTankModal(tankLabel) {
@@ -113,7 +398,24 @@
                 // Show modal
                 modal.style.display = 'block';
 
-                // Fetch tank details via AJAX (using tank label in URL)
+                // Fetch tank data as JSON first
+                fetch('/api/fermenters/' + encodeURIComponent(tankLabel))
+                    .then(response => response.json())
+                    .then(tankData => {
+                        // Store tank data for use in transaction forms
+                        currentTankData = {
+                            label: tankData.label,
+                            currentQuantity: tankData.currentQuantity,
+                            capacity: tankData.capacity,
+                            batchId: tankData.currentBatchId
+                        };
+                        console.log('Loaded tank data:', currentTankData);
+                    })
+                    .catch(error => {
+                        console.error('Error loading tank data:', error);
+                    });
+
+                // Fetch tank details HTML via AJAX (using tank label in URL)
                 fetch('/fermenters/' + encodeURIComponent(tankLabel) + '/details')
                     .then(response => {
                         if (!response.ok) {
@@ -147,6 +449,310 @@
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeTankModal();
+                    // Also close any open transaction modals
+                    document.querySelectorAll('.transaction-modal').forEach(modal => {
+                        modal.style.display = 'none';
+                    });
+                }
+            });
+
+            // Dropdown Functions (for Add/Remove buttons in tank details)
+            function toggleDropdown(dropdownId) {
+                const dropdown = document.getElementById(dropdownId);
+                if (!dropdown) return;
+
+                dropdown.classList.toggle('show');
+
+                // Close other dropdowns
+                const allDropdowns = document.querySelectorAll('.dropdown-menu');
+                allDropdowns.forEach(dd => {
+                    if (dd.id !== dropdownId) {
+                        dd.classList.remove('show');
+                    }
+                });
+            }
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.dropdown')) {
+                    const dropdowns = document.querySelectorAll('.dropdown-menu');
+                    dropdowns.forEach(dd => dd.classList.remove('show'));
+                }
+            });
+
+            // Store current tank data for use in transaction forms
+            let currentTankData = {
+                label: '',
+                currentQuantity: 0,
+                capacity: 0,
+                unit: 'bbls',
+                unitId: null,
+                batchId: null
+            };
+
+            // ==================== Modal Opening Functions ====================
+
+            // 1. Cider Addition Modal
+            function openCiderAdditionModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+                document.getElementById('ciderAdditionModal').style.display = 'block';
+            }
+
+            // 2. Yeast Addition Modal
+            function openYeastAdditionModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+                document.getElementById('yeastAdditionModal').style.display = 'block';
+            }
+
+            // 3. Lysozyme Addition Modal
+            function openLysozymeAdditionModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+                document.getElementById('lysozymeAdditionModal').style.display = 'block';
+            }
+
+            // 4. Transfer Out Modal
+            function openTransferOutModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+                document.getElementById('transferOutModal').style.display = 'block';
+            }
+
+            // 5. Sample Modal
+            function openSampleModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+                document.getElementById('sampleModal').style.display = 'block';
+            }
+
+            // 6. Waste Modal
+            function openWasteModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+                document.getElementById('wasteModal').style.display = 'block';
+            }
+
+            // 7. Note Modal
+            function openNoteModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+                document.getElementById('noteModal').style.display = 'block';
+            }
+
+            // Helper function to close all dropdowns
+            function closeAllDropdowns() {
+                const dropdowns = document.querySelectorAll('.dropdown-menu');
+                dropdowns.forEach(dd => dd.classList.remove('show'));
+            }
+
+            /**
+             * Open the start batch form modal and populate with tank information.
+             * @param {string} tankId - The tank's database ID
+             * @param {string} tankLabel - The tank's label (e.g., "FV-1")
+             */
+            function openStartBatchForm(tankId, tankLabel) {
+                // Store tank ID in hidden field
+                document.getElementById('start-batch-tank-id').value = tankId;
+
+                // Display tank label in modal
+                document.getElementById('start-batch-tank-label').textContent = tankLabel;
+
+                // Show modal
+                document.getElementById('startBatchModal').style.display = 'block';
+            }
+
+            /**
+             * Submit the start batch form to create a new batch.
+             * @param {Event} event - Form submit event
+             */
+            function startBatch(event) {
+                event.preventDefault();
+
+                // Get form data
+                const form = event.target;
+                const formData = new FormData(form);
+
+                // Build request object
+                const data = {
+                    tankId: parseInt(document.getElementById('start-batch-tank-id').value),
+                    newBatchLabel: formData.get('batchLabel'),
+                    transactionTypeId: 1, // Cider Addition
+                    quantity: parseFloat(formData.get('quantity')),
+                    notes: formData.get('notes') || null
+                };
+
+                console.log('Starting new batch:', data);
+
+                // Show loading state
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Starting Batch...';
+
+                // Send to backend
+                fetch('/api/batches/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Close modal and reset form
+                        document.getElementById('startBatchModal').style.display = 'none';
+                        form.reset();
+
+                        // Show success message
+                        alert('Batch started successfully!');
+
+                        // Reload the page to show updated tank status
+                        window.location.reload();
+                    } else {
+                        // Show error message
+                        alert('Error: ' + result.message);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting batch:', error);
+                    alert('Error starting batch. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                });
+            }
+
+            function openCompleteBatchConfirm() {
+                if (confirm('Are you sure you want to complete this batch?\n\nThis will:\n- Mark the batch as finished\n- Clear the tank\n- Reset the current quantity to zero\n\nThis action cannot be undone.')) {
+                    // TODO: Submit to backend
+                    alert('Completing batch - Backend integration coming soon!');
+                }
+            }
+
+            function closeTransactionModal(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+                // Reset form
+                const form = document.querySelector('#' + modalId + ' form');
+                if (form) form.reset();
+            }
+
+            function submitTransaction(event, transactionTypeId) {
+                event.preventDefault();
+
+                // Get form data
+                const form = event.target;
+                const formData = new FormData(form);
+
+                // Convert to object
+                const data = {
+                    batchId: currentTankData.batchId,
+                    transactionTypeId: transactionTypeId,
+                    quantity: formData.get('quantity') ? parseFloat(formData.get('quantity')) : 0,
+                    // quantityUnitId: formData.get('unitId') ? parseInt(formData.get('unitId')) : null,
+                    notes: formData.get('notes') || null
+                };
+
+                console.log('Submitting transaction:', data);
+
+                // Show loading state
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting...';
+
+                // Send to backend
+                fetch('/api/transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Close modal
+                        const modal = form.closest('.transaction-modal');
+                        if (modal) {
+                            modal.style.display = 'none';
+                            form.reset();
+                        }
+
+                        // Reload tank details modal
+                        if (currentTankData.label) {
+                            openTankModal(currentTankData.label);
+                        }
+
+                        // Update main page tank card
+                        updateMainPageTankCard(currentTankData.label);
+
+                        // Show success message
+                        alert('Transaction added successfully!');
+                    } else {
+                        // Show error message
+                        alert('Error: ' + result.message);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting transaction:', error);
+                    alert('Error submitting transaction. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                });
+            }
+
+
+            /**
+             * Update the tank card on the main fermenters page after a transaction.
+             * Fetches fresh data and updates the displayed quantity using direct ID lookups.
+             */
+            function updateMainPageTankCard(tankLabel) {
+                fetch('/api/fermenters/' + encodeURIComponent(tankLabel))
+                    .then(response => response.json())
+                    .then(tankData => {
+                        // Direct O(1) lookup by ID - no searching or looping needed!
+                        const quantityElement = document.getElementById('tank-qty-' + tankLabel);
+                        const percentElement = document.getElementById('tank-pct-' + tankLabel);
+                        const fillElement = document.getElementById('tank-fill-' + tankLabel);
+
+                        // Update quantity
+                        if (quantityElement) {
+                            quantityElement.textContent = tankData.currentQuantity.toFixed(0);
+                        }
+
+                        // Update percentage
+                        if (percentElement) {
+                            percentElement.textContent = tankData.percentFull.toFixed(0) + '%';
+                        }
+
+                        // Update capacity bar width and color
+                        if (fillElement) {
+                            fillElement.style.width = tankData.percentFull + '%';
+
+                            // Update color based on percentage
+                            fillElement.classList.remove('capacity-high', 'capacity-medium', 'capacity-low');
+                            if (tankData.percentFull > 50) {
+                                fillElement.classList.add('capacity-high');
+                            } else if (tankData.percentFull > 25) {
+                                fillElement.classList.add('capacity-medium');
+                            } else {
+                                fillElement.classList.add('capacity-low');
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error updating main page tank card:', error));
+            }
+
+            // Close transaction modals when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target.classList.contains('transaction-modal')) {
+                    event.target.style.display = 'none';
                 }
             });
         </script>
