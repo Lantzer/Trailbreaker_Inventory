@@ -533,46 +533,54 @@ Set `spring.jpa.hibernate.ddl-auto=create` in `application-dev.properties` (alre
 
 ## 📋 RESUME HERE TOMORROW
 
-**Current Status:** Phases 1-3 complete (backend done), committed to git
+**Current Status:** Frontend and backend mostly complete, fermenters page functional
 
-**Next Session Tasks:**
+**Completed:**
+- ✅ Backend entities, repositories, and service layer
+- ✅ Controller with endpoints for tank details, start batch, add transactions
+- ✅ Frontend tank grid with active/empty states
+- ✅ Tank details modal with transaction history
+- ✅ Transaction forms (cider, yeast, lysozyme, transfer, sample, waste, note)
+- ✅ Start batch functionality
 
-### Priority 1: Write Tests for Existing Code (CRITICAL)
-Before continuing with controller/views, we MUST test what we've built:
+**Next Task:**
 
-1. **Unit Tests for Service** (`FermenterServiceTest.java`) - ~20 tests
-   - Tank CRUD with validation
-   - Batch creation with initial transaction
-   - Transaction logic (yeast/lysozyme dates, quantity updates)
-   - Batch completion
-   - Error cases (capacity exceeded, negative quantities, completed batch transactions)
+### 🎯 Implement Complete Batch Functionality
 
-2. **Entity Tests** (optional but recommended)
-   - Test business logic methods (`isActive()`, `getDaysInFermentation()`, etc.)
-   - Test constructors and null safety
+The "Complete Batch" button is currently a stub (`openCompleteBatchConfirm()` shows alert). Need to implement:
 
-3. **Repository Tests** (optional - can use integration tests instead)
-   - Test custom queries work as expected
+1. **Backend endpoint** in `FermentersController.java`:
+   ```java
+   @PostMapping("/api/batches/{batchId}/complete")
+   @ResponseBody
+   public ResponseEntity<?> completeBatch(@PathVariable Integer batchId)
+   ```
+   - Should call `fermenterService.completeBatch(batchId)`
+   - Returns success/error JSON response
 
-**Run tests with:** `mvn test` (uses mock DataSource by default)
+2. **Frontend JavaScript** in `fermenters.html`:
+   - Update `openCompleteBatchConfirm()` function
+   - Make POST request to `/api/batches/{batchId}/complete`
+   - On success: close tank modal, reload main page to show tank as empty
+   - Handle errors appropriately
 
-### Priority 2: Continue Implementation
-After tests pass:
+3. **Service layer logic** (already exists in `FermenterService.java:362`):
+   - Verify the existing `completeBatch()` method works correctly
+   - Should: set completion date, clear tank's current_batch_id, reset current_quantity to zero
 
-4. **Phase 4: Controller** - Enhance `FermentersController.java`
-   - Implement endpoints for tank list, details, create
-   - Implement batch start/complete endpoints
-   - Implement transaction add endpoint
-   - Create DTOs/Forms (TankForm, BatchForm, TransactionForm)
+4. **Testing**:
+   - Manually test complete batch flow
+   - Verify tank shows as empty after completion
+   - Verify can start new batch on completed tank
 
-5. **Phase 5: Views** - Enhance `fermenters.html`
-   - Tank grid with Bootstrap cards
-   - Tank detail page with transaction history
-   - Forms for tank creation, batch start, transaction add
+---
 
-6. **Phase 6: Full Integration Tests**
-   - End-to-end workflow tests
-   - Run with: `mvn -P real-db-test test` (requires PostgreSQL)
+### Future Tasks (Lower Priority):
+
+- Write comprehensive unit tests for `FermenterService`
+- Write integration tests for full batch workflow
+- Add tank editing capability (change label, capacity)
+- Add batch history view (show all completed batches)
 
 ---
 

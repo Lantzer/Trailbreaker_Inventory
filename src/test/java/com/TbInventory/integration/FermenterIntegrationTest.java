@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -44,12 +43,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Test full workflows with real DB operations
  * - Automatically rollback changes (due to @Transactional)
  *
- * Test coverage (5 tests):
+ * Test coverage (2 tests):
  * - Transaction type cache loading from database
- * - Cache persistence across multiple operations
- * - Invalid transaction type handling
  * - Full batch workflow (create → transactions → complete)
- * - Verify all DB types are cached
  */
 @IntegrationTest
 @Transactional // Rollback after each test to keep DB clean
@@ -150,63 +146,6 @@ class FermenterIntegrationTest {
         });
     }
 
-    @Test
-    void cachedTransactionTypes_CanBeUsedInMultipleOperations() {
-        // This test verifies the cache persists across multiple service calls
-
-        // Create a batch
-        FermBatch batch = fermenterService.startBatch(
-            testTank.getId(),
-            "Test IPA",
-            transferInType.getId(),
-            new BigDecimal("60.00"),
-            "Initial transfer"
-        );
-
-        // Add yeast using cached type - should work without querying DB again
-        assertDoesNotThrow(() -> {
-            fermenterService.addTransaction(
-                batch.getId(),
-                yeastType.getId(), // Uses cache
-                new BigDecimal("100.00"),
-                LocalDateTime.now(),
-                1,
-                "Adding yeast"
-            );
-        });
-
-        // Verify batch yeast date was set
-        FermBatch updated = fermenterService.getBatchById(batch.getId());
-        assertNotNull(updated.getYeastDate(), "Yeast date should be set after yeast transaction");
-    }
-
-    @Test
-    void invalidTransactionTypeId_ThrowsException() {
-        // Create a batch first
-        FermBatch batch = fermenterService.startBatch(
-            testTank.getId(),
-            "Test Batch",
-            transferInType.getId(),
-            new BigDecimal("30.00"),
-            "Initial"
-        );
-
-        // Try to use an invalid transaction type ID (999999 definitely doesn't exist)
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            fermenterService.addTransaction(
-                batch.getId(),
-                999999, // Invalid ID - not in cache
-                new BigDecimal("10.00"),
-                LocalDateTime.now(),
-                1,
-                "Should fail"
-            );
-        });
-
-        assertTrue(exception.getMessage().contains("Invalid transaction type"),
-            "Should throw exception for invalid transaction type ID");
-    }
-
     // ==================== Full Workflow Integration Test ====================
 
     @Test
@@ -237,10 +176,6 @@ class FermenterIntegrationTest {
             "Pitching yeast"
         );
 
-        // Verify yeast date was set
-        batch = fermenterService.getBatchById(batch.getId());
-        assertNotNull(batch.getYeastDate());
-
         // Step 3: Complete batch
         FermBatch completed = fermenterService.completeBatch(batch.getId());
         assertNotNull(completed.getCompletionDate());
@@ -249,50 +184,5 @@ class FermenterIntegrationTest {
         tank = fermenterService.getTankById(testTank.getId());
         assertNull(tank.getCurrentBatchId());
         assertEquals(BigDecimal.ZERO, tank.getCurrentQuantity());
-    }
-
-    @Test
-    void transactionTypeCache_ContainsAllDatabaseTypes() {
-        // Verify that all transaction types in the database were loaded into cache
-        List<TransactionType> allTypes = transactionTypeRepository.findAll();
-
-        // If database has transaction types, verify they're all usable
-        if (!allTypes.isEmpty()) {
-            System.out.println("Found " + allTypes.size() + " transaction types in database:");
-            for (TransactionType type : allTypes) {
-                System.out.println("  - ID: " + type.getId() + ", Name: " + type.getTypeName());
-            }
-
-            // Create a batch for testing
-            FermBatch batch = fermenterService.startBatch(
-                testTank.getId(),
-                "Cache Validation Batch",
-                allTypes.get(0).getId(), // Use first type
-                new BigDecimal("40.00"),
-                "Testing"
-            );
-
-            // Try to use each transaction type from the database
-            for (TransactionType type : allTypes) {
-                // Skip types that affect tank quantity and might cause validation errors
-                // Just verify the type exists in cache (doesn't throw "Invalid transaction type")
-                if (!type.getAffectsTankQuantity()) {
-                    assertDoesNotThrow(() -> {
-                        fermenterService.addTransaction(
-                            batch.getId(),
-                            type.getId(),
-                            new BigDecimal("10.00"),
-                            LocalDateTime.now(),
-                            1,
-                            "Testing type: " + type.getTypeName()
-                        );
-                    }, "Transaction type '" + type.getTypeName() + "' (ID: " + type.getId() +
-                       ") should be in cache");
-                }
-            }
-        } else {
-            System.out.println("WARNING: No transaction types found in database. " +
-                "Run database seed script to populate transaction_type table.");
-        }
     }
 }

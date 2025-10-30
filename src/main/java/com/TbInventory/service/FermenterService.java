@@ -338,6 +338,15 @@ public class FermenterService {
         return batchRepository.findByCompletionDateIsNotNullOrderByCompletionDateDesc();
     }
 
+    /**
+     * Get all fermenter batches (both active and completed).
+     * Used for admin view to see all batches.
+     * @return List of all batches
+     */
+    public List<FermBatch> getAllFermenterBatches() {
+        return batchRepository.findAll();
+    }
+
     // ==================== Transaction Management Methods ====================
 
     /**
@@ -386,16 +395,7 @@ public class FermenterService {
         );
         transaction = transactionRepository.save(transaction);
 
-        // 4. Special business logic for specific transaction types
-        if (type.getId() == 2) { // Yeast Addition
-            batch.setYeastDate(transactionDate);
-            batchRepository.save(batch);
-        } else if (type.getId() == 3) { // Lysozyme Addition
-            batch.setLysozymeDate(transactionDate);
-            batchRepository.save(batch);
-        }
-
-        // 5. Business logic: Update tank quantity if transaction affects volume
+        // 4. Business logic: Update tank quantity if transaction affects volume
         if (type.getAffectsTankQuantity()) {
             FermTank tank = getTankById(batch.getTankId());
 
@@ -491,7 +491,7 @@ public class FermenterService {
         // 4. Mark batch as complete
         batch.setCompletionDate(LocalDateTime.now());
         batch = batchRepository.save(batch);
-
+        
         // 5. Clear the tank's current batch and reset quantity
         if (tank.getCurrentBatchId() != null && tank.getCurrentBatchId().equals(batchId)) {
             tank.setCurrentBatchId(null);

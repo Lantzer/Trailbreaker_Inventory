@@ -40,12 +40,6 @@ public class FermBatch {
     @Column(name = "start_date", nullable = false)
     private LocalDateTime startDate;
 
-    @Column(name = "yeast_date")
-    private LocalDateTime yeastDate;
-
-    @Column(name = "lysozyme_date")
-    private LocalDateTime lysozymeDate;
-
     @Column(name = "completion_date")
     private LocalDateTime completionDate;
 
@@ -90,21 +84,5 @@ public class FermBatch {
         }
         LocalDateTime endDate = completionDate != null ? completionDate : LocalDateTime.now();
         return ChronoUnit.DAYS.between(startDate, endDate);
-    }
-
-    /**
-     * Checks if yeast has been added to this batch.
-     * @return true if yeast date is set
-     */
-    public boolean hasYeastAdded() {
-        return yeastDate != null;
-    }
-
-    /**
-     * Checks if lysozyme has been added to this batch.
-     * @return true if lysozyme date is set
-     */
-    public boolean hasLysozymeAdded() {
-        return lysozymeDate != null;
     }
 }

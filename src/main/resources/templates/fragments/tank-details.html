@@ -49,14 +49,6 @@
                 <span class="info-label">Days in Fermentation</span>
                 <span class="info-value" th:text="${batch.daysInFermentation}">12</span>
             </div>
-            <div class="info-item" th:if="${batch.yeastDate != null}">
-                <span class="info-label">Yeast Pitched</span>
-                <span class="info-value" th:text="${#temporals.format(batch.yeastDate, 'MMM dd, yyyy HH:mm')}">Oct 10, 2025</span>
-            </div>
-            <div class="info-item" th:if="${batch.lysozymeDate != null}">
-                <span class="info-label">Lysozyme Added</span>
-                <span class="info-value" th:text="${#temporals.format(batch.lysozymeDate, 'MMM dd, yyyy HH:mm')}">Oct 11, 2025</span>
-            </div>
             <div class="info-item" th:if="${batch.completionDate != null}">
                 <span class="info-label">Completion Date</span>
                 <span class="info-value" th:text="${#temporals.format(batch.completionDate, 'MMM dd, yyyy HH:mm')}">Oct 22, 2025</span>
