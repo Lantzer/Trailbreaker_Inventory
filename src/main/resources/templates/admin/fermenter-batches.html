@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <th:block th:replace="~{/layouts/base :: head(${title})}"></th:block>
+    <body>
+        <div th:replace="~{/layouts/base :: header}"></div>
+        <div th:replace="~{/layouts/base :: navbar}"></div>
+
+        <main>
+            <div class="container">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h1 th:text="${title}">View Fermenter Batches</h1>
+                </div>
+
+                <!-- Batches Table -->
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Batch ID</th>
+                            <th>Batch Name</th>
+                            <th>Tank</th>
+                            <th>Start Date</th>
+                            <th>Completion Date</th>
+                            <th>Days in Fermentation</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="batch : ${batches}">
+                            <td th:text="${batch.id}">1</td>
+                            <td th:text="${batch.batchName}">Left Turn IPA</td>
+                            <td>
+                                <span th:text="'Tank #' + ${batch.tankId}">Tank #1</span>
+                            </td>
+                            <td th:text="${#temporals.format(batch.startDate, 'MMM dd, yyyy')}">Jan 15, 2024</td>
+                            <td>
+                                <span th:if="${batch.completionDate != null}"
+                                      th:text="${#temporals.format(batch.completionDate, 'MMM dd, yyyy')}">Jan 30, 2024</span>
+                                <span th:if="${batch.completionDate == null}">-</span>
+                            </td>
+                            <td th:text="${batch.daysInFermentation} + ' days'">15 days</td>
+                            <td>
+                                <span th:if="${batch.active}" class="badge badge-active">Active</span>
+                                <span th:if="${!batch.active}" class="badge badge-completed">Completed</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Empty State -->
+                <div th:if="${#lists.isEmpty(batches)}" class="text-center mt-4">
+                    <p>No batches found.</p>
+                </div>
+            </div>
+        </main>
+
+        <style>
+            .admin-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 1rem;
+                background: white;
+            }
+
+            .admin-table thead {
+                background-color: #34495e;
+                color: white;
+            }
+
+            .admin-table th {
+                padding: 1rem;
+                text-align: left;
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 0.85rem;
+                letter-spacing: 0.5px;
+            }
+
+            .admin-table tbody tr {
+                border-bottom: 1px solid #ecf0f1;
+                transition: background-color 0.2s ease;
+            }
+
+            .admin-table tbody tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            .admin-table td {
+                padding: 1rem;
+                color: #2c3e50;
+            }
+
+            .badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .badge-active {
+                background-color: #27ae60;
+                color: white;
+            }
+
+            .badge-completed {
+                background-color: #95a5a6;
+                color: white;
+            }
+
+            .page-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+            }
+
+            .text-center {
+                text-align: center;
+            }
+
+            .mt-4 {
+                margin-top: 2rem;
+            }
+        </style>
+    </body>
+</html>

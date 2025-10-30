@@ -131,4 +131,13 @@ public class AdminController {
         }
         return "redirect:/admin/tanks";
     }
+
+    // ==================== Fermenter Batches View ====================
+
+    @GetMapping("/fermenter-batches")
+    public String viewFermenterBatches(Model model) {
+        model.addAttribute("title", "View Fermenter Batches");
+        model.addAttribute("batches", fermenterService.getAllFermenterBatches());
+        return "admin/fermenter-batches";
+    }
 }

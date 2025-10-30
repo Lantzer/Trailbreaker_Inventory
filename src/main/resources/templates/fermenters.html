@@ -264,7 +264,7 @@
                             <label for="sampleVolume">Volume (gallons) *</label>
                             <input type="number" id="sampleVolume" name="quantity"
                                    step="0.01" min="0" required placeholder="Enter volume in gallons">
-                            <small class="form-help">Tip: 1 oz = 0.0078 gal</small>
+                            <!-- <small class="form-help">Tip: 1 oz = 0.0078 gal</small> -->
                         </div>
                         <div class="form-group">
                             <label for="sampleNotes">Notes (optional)</label>
@@ -603,6 +603,8 @@
                 .then(result => {
                     if (result.success) {
                         // Close modal and reset form
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
                         document.getElementById('startBatchModal').style.display = 'none';
                         form.reset();
 
@@ -627,9 +629,39 @@
             }
 
             function openCompleteBatchConfirm() {
-                if (confirm('Are you sure you want to complete this batch?\n\nThis will:\n- Mark the batch as finished\n- Clear the tank\n- Reset the current quantity to zero\n\nThis action cannot be undone.')) {
-                    // TODO: Submit to backend
-                    alert('Completing batch - Backend integration coming soon!');
+                if (!currentTankData.batchId) {
+                    alert('Error: No active batch to complete');
+                    return;
+                }
+
+                if (confirm('Are you sure you want to complete this batch?\n\nThis will:\n- Mark the batch as finished\n- Clear the tank\n- Reset the current quantity to zero\n- Auto-generate waste transaction for any remaining volume\n\nThis action cannot be undone.')) {
+                    // Call backend to complete the batch
+                    fetch('/api/batches/' + currentTankData.batchId + '/complete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            // Close tank details modal
+                            closeTankModal();
+
+                            // Show success message
+                            alert('Batch completed successfully!');
+
+                            // Reload the page to show updated tank status (now empty)
+                            window.location.reload();
+                        } else {
+                            // Show error message from backend
+                            alert('Error: ' + result.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error completing batch:', error);
+                        alert('Error completing batch. Please try again.');
+                    });
                 }
             }
 
@@ -676,6 +708,8 @@
                 .then(result => {
                     if (result.success) {
                         // Close modal
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
                         const modal = form.closest('.transaction-modal');
                         if (modal) {
                             modal.style.display = 'none';

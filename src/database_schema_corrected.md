@@ -214,8 +214,6 @@ CREATE TABLE ferm_batch (
     tank_id INTEGER NOT NULL,
     batch_name VARCHAR(100) NOT NULL,
     start_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    yeast_date TIMESTAMP,
-    lysozyme_date TIMESTAMP,
     completion_date TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

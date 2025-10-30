@@ -155,4 +155,62 @@ public class FermentersController {
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }
+
+    // ==================== Batch Completion Endpoint ====================
+
+    @PostMapping("/api/batches/{batchId}/complete")
+    @ResponseBody
+    public ResponseEntity<?> completeBatch(@PathVariable Integer batchId) {
+        try {
+            // 1. Validate input
+            if (batchId == null || batchId <= 0) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "Invalid batch ID");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // 2. Call service to complete the batch
+            FermBatch completedBatch = fermenterService.completeBatch(batchId);
+
+            // 3. Verify the operation succeeded
+            if (completedBatch == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "Failed to complete batch - batch not found");
+                return ResponseEntity.internalServerError().body(errorResponse);
+            }
+
+            // 4. Verify completion date was actually set
+            if (completedBatch.getCompletionDate() == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "Batch completion failed - completion date not set");
+                return ResponseEntity.internalServerError().body(errorResponse);
+            }
+
+            // 5. Return success response only after verification
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Batch completed successfully");
+            response.put("batchId", completedBatch.getId());
+            response.put("completionDate", completedBatch.getCompletionDate());
+
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            // Business logic errors (batch already completed, batch not found, etc.)
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+
+        } catch (Exception e) {
+            // Unexpected errors (database issues, etc.)
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "An unexpected error occurred: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
 }
