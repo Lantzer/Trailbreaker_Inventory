@@ -12,21 +12,55 @@
                     <h1 th:text="${title}">View Fermenter Batches</h1>
                 </div>
 
+                <!-- Search Bar and Result Count -->
+                <div class="search-section">
+                    <div class="search-bar">
+                        <input type="text"
+                               id="searchInput"
+                               placeholder="Search by batch name or tank number..."
+                               onkeyup="filterTable()">
+                    </div>
+                    <div id="resultCount" class="result-count">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
                 <!-- Batches Table -->
-                <table class="admin-table">
+                <table class="admin-table" id="batchesTable">
                     <thead>
                         <tr>
-                            <th>Batch ID</th>
-                            <th>Batch Name</th>
-                            <th>Tank</th>
-                            <th>Start Date</th>
-                            <th>Completion Date</th>
-                            <th>Days in Fermentation</th>
-                            <th>Status</th>
+                            <th class="sortable active-sort" onclick="sortTable('batchId')" data-sort="batchId">
+                                Batch ID <span class="sort-indicator">▼</span>
+                            </th>
+                            <th class="sortable" onclick="sortTable('batchName')" data-sort="batchName">
+                                Batch Name <span class="sort-indicator"></span>
+                            </th>
+                            <th class="sortable" onclick="sortTable('tank')" data-sort="tank">
+                                Tank <span class="sort-indicator"></span>
+                            </th>
+                            <th class="sortable" onclick="sortTable('startDate')" data-sort="startDate">
+                                Start Date <span class="sort-indicator"></span>
+                            </th>
+                            <th class="sortable" onclick="sortTable('completionDate')" data-sort="completionDate">
+                                Completion Date <span class="sort-indicator"></span>
+                            </th>
+                            <th class="sortable" onclick="sortTable('daysInFermentation')" data-sort="daysInFermentation">
+                                Days in Fermentation <span class="sort-indicator"></span>
+                            </th>
+                            <th class="sortable" onclick="sortTable('status')" data-sort="status">
+                                Status <span class="sort-indicator"></span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="batch : ${batches}">
+                        <tr th:each="batch : ${batches}"
+                            th:attr="data-batch-id=${batch.id},
+                                     data-batch-name=${batch.batchName},
+                                     data-tank-id=${batch.tankId},
+                                     data-start-date=${batch.startDate},
+                                     data-completion-date=${batch.completionDate},
+                                     data-days=${batch.daysInFermentation},
+                                     data-active=${batch.active}">
                             <td th:text="${batch.id}">1</td>
                             <td th:text="${batch.batchName}">Left Turn IPA</td>
                             <td>
@@ -48,13 +82,51 @@
                 </table>
 
                 <!-- Empty State -->
-                <div th:if="${#lists.isEmpty(batches)}" class="text-center mt-4">
+                <div id="emptyState" th:if="${#lists.isEmpty(batches)}" class="text-center mt-4">
                     <p>No batches found.</p>
+                </div>
+                <div id="noResultsState" class="text-center mt-4" style="display: none;">
+                    <p>No batches match your search.</p>
                 </div>
             </div>
         </main>
 
         <style>
+            /* Search Section */
+            .search-section {
+                margin-bottom: 1.5rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+            }
+
+            .search-bar {
+                flex: 1;
+                max-width: 400px;
+            }
+
+            .search-bar input {
+                width: 100%;
+                padding: 0.75rem 1rem;
+                border: 2px solid #bdc3c7;
+                border-radius: 6px;
+                font-size: 1rem;
+                transition: border-color 0.2s ease;
+            }
+
+            .search-bar input:focus {
+                outline: none;
+                border-color: #3498db;
+            }
+
+            .result-count {
+                color: #7f8c8d;
+                font-size: 0.95rem;
+                font-weight: 500;
+            }
+
+            /* Table Styles */
             .admin-table {
                 width: 100%;
                 border-collapse: collapse;
@@ -74,8 +146,35 @@
                 text-transform: uppercase;
                 font-size: 0.85rem;
                 letter-spacing: 0.5px;
+                position: relative;
             }
 
+            /* Sortable Headers */
+            .admin-table th.sortable {
+                cursor: pointer;
+                user-select: none;
+                transition: background-color 0.2s ease;
+            }
+
+            .admin-table th.sortable:hover {
+                background-color: #2c3e50;
+            }
+
+            .admin-table th.active-sort {
+                background-color: #2c3e50;
+            }
+
+            .sort-indicator {
+                margin-left: 0.5rem;
+                font-size: 0.75rem;
+                opacity: 0.7;
+            }
+
+            .admin-table th.sortable:not(.active-sort) .sort-indicator {
+                opacity: 0.3;
+            }
+
+            /* Table Body */
             .admin-table tbody tr {
                 border-bottom: 1px solid #ecf0f1;
                 transition: background-color 0.2s ease;
@@ -85,11 +184,16 @@
                 background-color: #f8f9fa;
             }
 
+            .admin-table tbody tr.hidden {
+                display: none;
+            }
+
             .admin-table td {
                 padding: 1rem;
                 color: #2c3e50;
             }
 
+            /* Badges */
             .badge {
                 display: inline-block;
                 padding: 0.25rem 0.75rem;
@@ -110,6 +214,7 @@
                 color: white;
             }
 
+            /* Page Layout */
             .page-header {
                 display: flex;
                 justify-content: space-between;
@@ -125,5 +230,210 @@
                 margin-top: 2rem;
             }
         </style>
+
+        <script>
+            // Global state
+            let currentSort = {
+                column: 'batchId',
+                ascending: false  // Start with descending (high to low)
+            };
+
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                updateResultCount();
+                // Default sort is already applied (Batch ID descending)
+            });
+
+            // Search/Filter Function
+            function filterTable() {
+                const searchInput = document.getElementById('searchInput').value.toLowerCase();
+                const table = document.getElementById('batchesTable');
+                const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+                const noResultsState = document.getElementById('noResultsState');
+
+                let visibleCount = 0;
+                const totalCount = rows.length;
+
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    const batchName = row.getAttribute('data-batch-name').toLowerCase();
+                    const tankId = row.getAttribute('data-tank-id');
+
+                    // Match against batch name or tank number
+                    if (batchName.includes(searchInput) || tankId.includes(searchInput)) {
+                        row.classList.remove('hidden');
+                        visibleCount++;
+                    } else {
+                        row.classList.add('hidden');
+                    }
+                }
+
+                // Show/hide no results message
+                if (visibleCount === 0 && totalCount > 0) {
+                    noResultsState.style.display = 'block';
+                } else {
+                    noResultsState.style.display = 'none';
+                }
+
+                updateResultCount();
+            }
+
+            // Update result count display
+            function updateResultCount() {
+                const table = document.getElementById('batchesTable');
+                const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+                const totalCount = rows.length;
+                let visibleCount = 0;
+
+                for (let i = 0; i < rows.length; i++) {
+                    if (!rows[i].classList.contains('hidden')) {
+                        visibleCount++;
+                    }
+                }
+
+                const resultCountDiv = document.getElementById('resultCount');
+                if (visibleCount === totalCount) {
+                    resultCountDiv.textContent = `Showing ${totalCount} batch${totalCount !== 1 ? 'es' : ''}`;
+                } else {
+                    resultCountDiv.textContent = `Showing ${visibleCount} of ${totalCount} batch${totalCount !== 1 ? 'es' : ''}`;
+                }
+            }
+
+            // Main Sort Function
+            function sortTable(columnName) {
+                const table = document.getElementById('batchesTable');
+                const tbody = table.getElementsByTagName('tbody')[0];
+                const rows = Array.from(tbody.getElementsByTagName('tr'));
+
+                // Determine sort direction
+                let ascending;
+                if (currentSort.column === columnName) {
+                    // Toggle direction for same column
+                    ascending = !currentSort.ascending;
+                } else {
+                    // New column - use default direction
+                    if (columnName === 'batchId' || columnName === 'tank' ||
+                        columnName === 'daysInFermentation') {
+                        ascending = false; // Start with high to low for numeric
+                    } else if (columnName === 'completionDate') {
+                        ascending = false; // Start with not completed first
+                    } else if (columnName === 'status') {
+                        ascending = false; // Start with active first
+                    } else {
+                        ascending = true; // Start with A-Z for text, oldest for dates
+                    }
+                }
+
+                // Sort rows based on column
+                rows.sort((rowA, rowB) => {
+                    return compareRows(rowA, rowB, columnName, ascending);
+                });
+
+                // Re-append rows in sorted order
+                rows.forEach(row => tbody.appendChild(row));
+
+                // Update current sort state
+                currentSort = { column: columnName, ascending: ascending };
+
+                // Update visual indicators
+                updateSortIndicators(columnName, ascending);
+            }
+
+            // Compare two rows based on column type
+            function compareRows(rowA, rowB, columnName, ascending) {
+                let valueA, valueB;
+
+                switch (columnName) {
+                    case 'batchId':
+                        valueA = parseInt(rowA.getAttribute('data-batch-id'));
+                        valueB = parseInt(rowB.getAttribute('data-batch-id'));
+                        break;
+
+                    case 'batchName':
+                        valueA = rowA.getAttribute('data-batch-name').toLowerCase();
+                        valueB = rowB.getAttribute('data-batch-name').toLowerCase();
+                        break;
+
+                    case 'tank':
+                        valueA = parseInt(rowA.getAttribute('data-tank-id'));
+                        valueB = parseInt(rowB.getAttribute('data-tank-id'));
+                        break;
+
+                    case 'startDate':
+                        valueA = new Date(rowA.getAttribute('data-start-date'));
+                        valueB = new Date(rowB.getAttribute('data-start-date'));
+                        break;
+
+                    case 'completionDate':
+                        // Special handling: null (not completed) should group together
+                        const completionA = rowA.getAttribute('data-completion-date');
+                        const completionB = rowB.getAttribute('data-completion-date');
+
+                        // If sorting with not-completed first (ascending = false)
+                        if (!ascending) {
+                            if (completionA === 'null' && completionB !== 'null') return -1;
+                            if (completionA !== 'null' && completionB === 'null') return 1;
+                            if (completionA === 'null' && completionB === 'null') return 0;
+                            // Both completed - sort by date (newest first)
+                            return new Date(completionB) - new Date(completionA);
+                        } else {
+                            // Completed first, sorted by date (newest to oldest)
+                            if (completionA === 'null' && completionB !== 'null') return 1;
+                            if (completionA !== 'null' && completionB === 'null') return -1;
+                            if (completionA === 'null' && completionB === 'null') return 0;
+                            // Both completed - sort by date (newest first)
+                            return new Date(completionB) - new Date(completionA);
+                        }
+
+                    case 'daysInFermentation':
+                        valueA = parseInt(rowA.getAttribute('data-days'));
+                        valueB = parseInt(rowB.getAttribute('data-days'));
+                        break;
+
+                    case 'status':
+                        valueA = rowA.getAttribute('data-active') === 'true' ? 1 : 0;
+                        valueB = rowB.getAttribute('data-active') === 'true' ? 1 : 0;
+                        break;
+
+                    default:
+                        return 0;
+                }
+
+                // Skip comparison logic for completionDate (handled above)
+                if (columnName === 'completionDate') {
+                    return 0; // Already handled
+                }
+
+                // Perform comparison
+                let result;
+                if (typeof valueA === 'string') {
+                    result = valueA.localeCompare(valueB);
+                } else if (valueA instanceof Date) {
+                    result = valueA - valueB;
+                } else {
+                    result = valueA - valueB;
+                }
+
+                return ascending ? result : -result;
+            }
+
+            // Update sort indicator arrows
+            function updateSortIndicators(columnName, ascending) {
+                const headers = document.querySelectorAll('.admin-table th.sortable');
+
+                headers.forEach(header => {
+                    const headerColumn = header.getAttribute('data-sort');
+                    const indicator = header.querySelector('.sort-indicator');
+
+                    if (headerColumn === columnName) {
+                        header.classList.add('active-sort');
+                        indicator.textContent = ascending ? '▲' : '▼';
+                    } else {
+                        header.classList.remove('active-sort');
+                        indicator.textContent = '';
+                    }
+                });
+            }
+        </script>
     </body>
 </html>

@@ -25,12 +25,12 @@
                         <div>
                             <strong>Capacity:</strong>
                             <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
-                            <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                            <span>gals</span>
                         </div>
                         <div>
                             <strong>Current Quantity:</strong>
                             <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">90</span>
-                            <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                            <span>gals</span>
                         </div>
                         <div>
                             <strong>Status:</strong>
@@ -51,39 +51,34 @@
                                    name="newLabel"
                                    pattern="[a-zA-Z0-9_-]+"
                                    th:placeholder="${tank.label}"
-                                   title="Only letters, numbers, hyphens, and underscores allowed">
+                                   th:attr="data-current-label=${tank.label}"
+                                   title="Only letters, numbers, hyphens, and underscores allowed"
+                                   oninput="validateForm()">
                             <small class="form-help">URL-safe name (e.g., FV-1, FV-2A, Fermenter-01)</small>
+                            <small class="form-error" id="labelError" style="display: none;"></small>
                         </div>
 
                         <div class="form-group">
-                            <label for="newCapacity">New Capacity (optional)</label>
+                            <label for="newCapacity">New Capacity (gallons) (optional)</label>
                             <input type="number"
                                    id="newCapacity"
                                    name="newCapacity"
                                    step="10"
-                                   th:min="${tank.currentQuantity}"
-                                   th:placeholder="${#numbers.formatDecimal(tank.capacity, 1, 0)}">
+                                   min="0"
+                                   th:attr="data-current-capacity=${tank.capacity},
+                                            data-current-quantity=${tank.currentQuantity}"
+                                   th:placeholder="${#numbers.formatDecimal(tank.capacity, 1, 0)}"
+                                   oninput="validateForm()">
                             <small class="form-help warning" th:if="${tank.currentQuantity > 0}">
                                 ⚠️ Minimum capacity: <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 2)}">90.00</span>
-                                <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                                <span>gals</span>
                                 (current quantity)
                             </small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="newCapacityUnitId">New Capacity Unit (optional)</label>
-                            <select id="newCapacityUnitId" name="newCapacityUnitId">
-                                <option value="" th:text="'Keep current (' + ${tank.capacityUnit.name} + ')'">Keep current (Barrels)</option>
-                                <option th:each="unit : ${units}"
-                                        th:value="${unit.id}"
-                                        th:text="${unit.name + ' (' + unit.abbreviation + ')'}">
-                                    Barrels (bbls)
-                                </option>
-                            </select>
+                            <small class="form-error" id="capacityError" style="display: none;"></small>
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Update Tank</button>
+                            <button type="submit" id="submitBtn" class="btn btn-primary" disabled>Update Tank</button>
                             <a th:href="@{/admin/tanks}" class="btn btn-secondary">Cancel</a>
                         </div>
                     </form>
@@ -172,6 +167,27 @@
                 font-weight: 500;
             }
 
+            .form-error {
+                display: block;
+                margin-top: 0.5rem;
+                font-size: 0.85rem;
+                color: #e74c3c;
+                font-weight: 600;
+            }
+
+            .form-group input.invalid {
+                border-color: #e74c3c;
+            }
+
+            .form-group input.valid {
+                border-color: #27ae60;
+            }
+
+            .btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
             .form-actions {
                 display: flex;
                 gap: 1rem;
@@ -189,6 +205,136 @@
                 border: 1px solid #f5c6cb;
                 color: #721c24;
             }
+
+            .badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .badge-active {
+                background-color: #27ae60;
+                color: white;
+            }
+
+            .badge-empty {
+                background-color: #95a5a6;
+                color: white;
+            }
         </style>
+
+        <script>
+            // Validation function
+            function validateForm() {
+                const newLabelInput = document.getElementById('newLabel');
+                const newCapacityInput = document.getElementById('newCapacity');
+                const submitBtn = document.getElementById('submitBtn');
+                const labelError = document.getElementById('labelError');
+                const capacityError = document.getElementById('capacityError');
+
+                // Get current values from data attributes
+                const currentLabel = newLabelInput.getAttribute('data-current-label');
+                const currentCapacity = parseFloat(newCapacityInput.getAttribute('data-current-capacity'));
+                const currentQuantity = parseFloat(newCapacityInput.getAttribute('data-current-quantity'));
+
+                // Get new values from inputs
+                const newLabel = newLabelInput.value.trim();
+                const newCapacity = newCapacityInput.value ? parseFloat(newCapacityInput.value) : null;
+
+                let labelValid = false;
+                let capacityValid = false;
+                let hasChanges = false;
+
+                // Validate Label
+                if (newLabel === '') {
+                    // Empty is okay (optional field)
+                    newLabelInput.classList.remove('valid', 'invalid');
+                    labelError.style.display = 'none';
+                    labelValid = true; // Empty is valid, just no change
+                } else {
+                    // Check if different from current
+                    if (newLabel === currentLabel) {
+                        newLabelInput.classList.remove('valid');
+                        newLabelInput.classList.add('invalid');
+                        labelError.textContent = '❌ New label must be different from current label';
+                        labelError.style.display = 'block';
+                        labelValid = false;
+                    }
+                    // Check pattern
+                    else if (!/^[a-zA-Z0-9_-]+$/.test(newLabel)) {
+                        newLabelInput.classList.remove('valid');
+                        newLabelInput.classList.add('invalid');
+                        labelError.textContent = '❌ Only letters, numbers, hyphens, and underscores allowed';
+                        labelError.style.display = 'block';
+                        labelValid = false;
+                    }
+                    // Valid new label
+                    else {
+                        newLabelInput.classList.remove('invalid');
+                        newLabelInput.classList.add('valid');
+                        labelError.style.display = 'none';
+                        labelValid = true;
+                        hasChanges = true;
+                    }
+                }
+
+                // Validate Capacity
+                if (newCapacity === null || newCapacityInput.value === '') {
+                    // Empty is okay (optional field)
+                    newCapacityInput.classList.remove('valid', 'invalid');
+                    capacityError.style.display = 'none';
+                    capacityValid = true; // Empty is valid, just no change
+                } else {
+                    // Check if less than or equal to 0
+                    if (newCapacity <= 0) {
+                        newCapacityInput.classList.remove('valid');
+                        newCapacityInput.classList.add('invalid');
+                        capacityError.textContent = '❌ Capacity must be greater than 0';
+                        capacityError.style.display = 'block';
+                        capacityValid = false;
+                    }
+                    // Check if same as current
+                    else if (newCapacity === currentCapacity) {
+                        newCapacityInput.classList.remove('valid');
+                        newCapacityInput.classList.add('invalid');
+                        capacityError.textContent = '❌ New capacity must be different from current capacity';
+                        capacityError.style.display = 'block';
+                        capacityValid = false;
+                    }
+                    // Check if less than current quantity
+                    else if (newCapacity < currentQuantity) {
+                        newCapacityInput.classList.remove('valid');
+                        newCapacityInput.classList.add('invalid');
+                        capacityError.textContent = '❌ Capacity cannot be less than current quantity (' + currentQuantity.toFixed(2) + ' gals)';
+                        capacityError.style.display = 'block';
+                        capacityValid = false;
+                    }
+                    // Valid new capacity
+                    else {
+                        newCapacityInput.classList.remove('invalid');
+                        newCapacityInput.classList.add('valid');
+                        capacityError.style.display = 'none';
+                        capacityValid = true;
+                        hasChanges = true;
+                    }
+                }
+
+                // Enable submit only if:
+                // 1. At least one field has valid changes
+                // 2. No validation errors
+                if (hasChanges && labelValid && capacityValid) {
+                    submitBtn.disabled = false;
+                } else {
+                    submitBtn.disabled = true;
+                }
+            }
+
+            // Run validation on page load
+            document.addEventListener('DOMContentLoaded', validateForm);
+        </script>
     </body>
 </html>

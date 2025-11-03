@@ -26,6 +26,6 @@ public class TankUpdateRequest {
     }
 
     public boolean hasCapacityUpdate() {
-        return newCapacity != null && newCapacityUnitId != null;
+        return newCapacity != null;
     }
 }

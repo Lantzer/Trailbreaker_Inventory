@@ -76,7 +76,6 @@ public class AdminController {
             @PathVariable String label,
             @RequestParam(value = "newLabel", required = false) String newLabel,
             @RequestParam(value = "newCapacity", required = false) BigDecimal newCapacity,
-            @RequestParam(value = "newCapacityUnitId", required = false) Integer newCapacityUnitId,
             RedirectAttributes redirectAttributes) {
         try {
             // Build update request with only provided fields
@@ -86,17 +85,24 @@ public class AdminController {
                 builder.newLabel(newLabel);
             }
 
-            /* Removed capacity update for fermenters since capacity is always in gallons
-            if (newCapacity != null) {
-                // If unit not specified, use current tank's unit
-                Integer unitId = newCapacityUnitId;
-                if (unitId == null) {
-                    unitId = fermenterService.getTankByLabel(label).getCapacityUnit().getId();
+            // If new capacity is provided, ensure it's different from current capacity
+            // and is a positive number
+            if (newCapacity != null){
+                // Validate new capacity
+                if (newCapacity.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new RuntimeException("Capacity must be a positive number");
                 }
-                builder.newCapacity(newCapacity).newCapacityUnitId(unitId);
+                // Check if new capacity is different from current capacity
+                if (fermenterService.getTankByLabel(label).getCapacity().equals(newCapacity)) {
+                    throw new RuntimeException("New capacity must be different from current capacity");
+                }
             }
-            */
 
+            // 
+            if (newCapacity != null && newCapacity.compareTo(BigDecimal.ZERO) > 0) {
+                builder.newCapacity(newCapacity);
+            }
+    
             TankUpdateRequest updateRequest = builder.build();
             fermenterService.updateTank(label, updateRequest);
 

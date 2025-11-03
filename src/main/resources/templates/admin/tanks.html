@@ -38,11 +38,11 @@
                             <td th:text="${tank.label}">FV-1</td>
                             <td>
                                 <span th:text="${#numbers.formatDecimal(tank.capacity, 1, 0)}">100</span>
-                                <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                                <span>gals</span>
                             </td>
                             <td>
                                 <span th:text="${#numbers.formatDecimal(tank.currentQuantity, 1, 0)}">90</span>
-                                <span th:text="${tank.capacityUnit.abbreviation}">bbls</span>
+                                <span>gals</span>
                             </td>
                             <td>
                                 <span th:if="${tank.deleted}" class="badge badge-deleted">Deleted</span>
@@ -122,6 +122,26 @@
 
             .actions-cell .btn {
                 margin-right: 0.5rem;
+            }
+
+            .badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .badge-active {
+                background-color: #27ae60;
+                color: white;
+            }
+
+            .badge-empty {
+                background-color: #95a5a6;
+                color: white;
             }
 
             .badge-deleted {

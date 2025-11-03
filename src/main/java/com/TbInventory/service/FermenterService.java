@@ -3,9 +3,7 @@ package com.TbInventory.service;
 import com.TbInventory.model.*;
 import com.TbInventory.repository.*;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.cglib.core.Local;
 import org.springframework.context.event.EventListener;
-import org.springframework.format.annotation.DurationFormat.Unit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -184,31 +182,23 @@ public class FermenterService {
                 throw new RuntimeException("Tank with label '" + newLabel + "' already exists");
             }
             tank.setLabel(newLabel);
+            System.out.println("Updated tank label to " + newLabel);
         }
 
         // Update capacity if provided
         if (updateRequest.hasCapacityUpdate()) {
             BigDecimal newCapacity = updateRequest.getNewCapacity();
-            Integer newCapacityUnitId = updateRequest.getNewCapacityUnitId();
-
-            // Validation: Capacity unit must be a volume unit
-            UnitType unit = unitTypeRepository.findById(newCapacityUnitId)
-                .orElseThrow(() -> new RuntimeException("Unit type not found: " + newCapacityUnitId));
-
-            if (!unit.getIsVolume()) {
-                throw new RuntimeException("Tank capacity must use volume units (barrels, gallons), not weight units");
-            }
 
             // Validation: New capacity must be >= current quantity
             if (newCapacity.compareTo(tank.getCurrentQuantity()) < 0) {
                 throw new RuntimeException(
-                    "New capacity (" + newCapacity + " " + unit.getAbbreviation() +
-                    ") cannot be less than current quantity (" + tank.getCurrentQuantity() +
+                    "New capacity (" + newCapacity + ") cannot be less than current quantity (" + tank.getCurrentQuantity() +
                     "gallons)"
                 );
             }
 
             tank.setCapacity(newCapacity);
+            System.out.println("Updated tank capacity to " + newCapacity + " gallons");
             
             // REMOVED: Capacity is always in gallons
             //tank.setCapacityUnit(unit);
