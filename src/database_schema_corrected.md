@@ -298,7 +298,7 @@ CREATE TABLE ferm_transaction (
     transaction_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     user_id INTEGER,
     notes TEXT,
-    bright_tank_id INTEGER,
+    related_tank_id INTEGER,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_ferm_transaction_batch
@@ -324,7 +324,7 @@ CREATE UNIQUE INDEX idx_unique_yeast_per_batch
 
 COMMENT ON TABLE ferm_transaction IS 'All transactions for fermenter batches (additions, transfers, removals)';
 COMMENT ON COLUMN ferm_transaction.notes IS 'Free-text notes (e.g., "Transferred to Bright Tank 3", "Waste - tank cleaning")';
-COMMENT ON COLUMN ferm_transaction.bright_tank_id IS 'If transfer to bright tank, reference the target tank ID';
+COMMENT ON COLUMN ferm_transaction.related_tank_id IS 'For transfers: destination tank ID (Transfer Out) or source tank ID (Transfer In)';
 ```
 
 **JPA Mapping:**
@@ -356,8 +356,8 @@ public class FermTransaction {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Column(name = "bright_tank_id")
-    private Integer brightTankId;
+    @Column(name = "related_tank_id")
+    private Integer relatedTankId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

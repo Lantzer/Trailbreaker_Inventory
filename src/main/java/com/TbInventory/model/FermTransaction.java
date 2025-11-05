@@ -54,11 +54,13 @@ public class FermTransaction {
     private String notes;
 
     /**
-     * Reference to bright tank if this is a transfer transaction.
+     * Reference to related tank for transfer transactions.
+     * - For Transfer Out (ID 4): destination tank ID
+     * - For Transfer In (ID 8): source tank ID
      * Null for non-transfer transactions.
      */
-    @Column(name = "bright_tank_id")
-    private Integer brightTankId;
+    @Column(name = "related_tank_id")
+    private Integer relatedTankId;
 
     /**
      * Constructor for creating a new transaction.
