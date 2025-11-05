@@ -36,9 +36,9 @@ INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_
 (3, 'Lysozyme Addition', 'Add lysozyme enzyme', 4, false, 0);
 
 -- ID 4: Transfer Out (affects tank quantity - removes volume)
--- Moves finished product to bright tank
+-- Moves finished product to bright tank or another fermenter
 INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
-(4, 'Transfer Out', 'Transfer to bright tank', 2, true, -1);
+(4, 'Transfer Out', 'Transfer to another tank', 2, true, -1);
 
 -- ID 5: Sample (affects tank quantity - removes small volume)
 INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
@@ -51,6 +51,11 @@ INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_
 -- ID 7: Note (does not affect tank quantity)
 INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
 (7, 'Note', 'General note or observation', 4, false, 0);
+
+-- ID 8: Transfer In (affects tank quantity - adds volume)
+-- Receives transfer from another fermenter tank
+INSERT INTO transaction_type (id, type_name, description, unit_id, affects_tank_quantity, quantity_multiplier) VALUES
+(8, 'Transfer In', 'Received transfer from another fermenter', 2, true, 1);
 
 -- ============================================
 -- Sample Fermenter Tanks for Testing

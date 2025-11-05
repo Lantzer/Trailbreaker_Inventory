@@ -334,6 +334,44 @@
             </div>
         </div>
 
+        <!-- Transfer to Fermenter Modal -->
+        <div id="transferToFermenterModal" class="modal transaction-modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Transfer to Fermenter Tank</h3>
+                    <button class="modal-close" onclick="closeTransactionModal('transferToFermenterModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="transferToFermenterForm" onsubmit="submitTransferToFermenter(event)">
+                        <div class="form-group">
+                            <label for="transferDestFermenter">Destination Tank *</label>
+                            <select id="transferDestFermenter" name="destinationTankLabel" required>
+                                <option value="">Select destination tank...</option>
+                            </select>
+                            <small class="form-help">Only tanks with active batches are shown</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Transfer Volume</label>
+                            <input type="text" readonly value="All remaining volume"
+                                   style="background-color: #f5f5f5; cursor: not-allowed; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
+                            <small class="form-help" id="currentVolDisplay">Current volume: 0 gal</small>
+                        </div>
+
+                        <div class="alert alert-warning" style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 0.75rem; border-radius: 4px; margin: 1rem 0;">
+                            <strong>⚠️ Warning:</strong> This will transfer ALL remaining volume and complete the source batch. This action cannot be undone.
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary"
+                                    onclick="closeTransactionModal('transferToFermenterModal')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Transfer & Complete Batch</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Start New Batch Modal -->
         <div id="startBatchModal" class="modal transaction-modal">
             <div class="modal-content modal-small">
@@ -539,6 +577,103 @@
                 if (event) event.preventDefault();
                 closeAllDropdowns();
                 document.getElementById('noteModal').style.display = 'block';
+            }
+
+            // 8. Transfer to Fermenter Modal
+            function openTransferToFermenterModal(event) {
+                if (event) event.preventDefault();
+                closeAllDropdowns();
+
+                // Display current volume
+                document.getElementById('currentVolDisplay').textContent =
+                    `Current volume: ${currentTankData.currentQuantity} gal`;
+
+                // Load available destination tanks via AJAX
+                fetch('/api/fermenters/list')
+                    .then(response => response.json())
+                    .then(tanks => {
+                        const select = document.getElementById('transferDestFermenter');
+                        select.innerHTML = '<option value="">Select destination tank...</option>';
+
+                        tanks.forEach(tank => {
+                            // Exclude current tank and tanks without active batches
+                            if (tank.label !== currentTankData.label && tank.hasActiveBatch) {
+                                const option = document.createElement('option');
+                                option.value = tank.label;
+                                option.textContent = `${tank.label} (${tank.currentQuantity}/${tank.capacity} gal)`;
+                                select.appendChild(option);
+                            }
+                        });
+
+                        // Show message if no valid destinations
+                        if (select.options.length === 1) {
+                            select.innerHTML = '<option value="">No available destination tanks</option>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading tanks:', error);
+                        alert('Error loading tank list. Please try again.');
+                    });
+
+                document.getElementById('transferToFermenterModal').style.display = 'block';
+            }
+
+            function submitTransferToFermenter(event) {
+                event.preventDefault();
+
+                const form = event.target;
+                const destinationLabel = form.destinationTankLabel.value;
+                const quantity = currentTankData.currentQuantity;
+
+                // Confirmation dialog
+                if (!confirm(
+                    `Transfer ${quantity} gallons to ${destinationLabel}?\n\n` +
+                    `This will:\n` +
+                    `- Transfer all remaining volume\n` +
+                    `- Complete the current batch\n` +
+                    `- Empty this tank\n\n` +
+                    `This action cannot be undone.`
+                )) {
+                    return;
+                }
+
+                // Show loading state
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Transferring...';
+
+                // Send to backend
+                fetch(`/api/batches/${currentTankData.batchId}/transfer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ destinationTankLabel: destinationLabel })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Close modals
+                        closeTransactionModal('transferToFermenterModal');
+                        closeTankModal();
+
+                        // Show success message
+                        alert('Transfer completed successfully!');
+
+                        // Reload page to show updated state
+                        window.location.reload();
+                    } else {
+                        // Show error from backend
+                        alert('Error: ' + result.message);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
+                })
+                .catch(error => {
+                    console.error('Transfer error:', error);
+                    alert('Error completing transfer. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                });
             }
 
             // Helper function to close all dropdowns

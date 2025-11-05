@@ -491,4 +491,104 @@ public class FermenterService {
 
         return batch;
     }
+
+    // ==================== Fermenter Transfer Methods ====================
+
+    /**
+     * Transfer entire remaining volume from source batch to destination tank.
+     * Creates TWO transactions atomically:
+     *   1. Transfer Out (ID 4) on source batch
+     *   2. Transfer In (ID 8) on destination batch
+     * Then completes the source batch.
+     *
+     * @param sourceBatchId Source batch ID
+     * @param destinationTankLabel Destination tank label (e.g., "FV-3")
+     * @return Array of [transferOut, transferIn] transactions
+     * @throws RuntimeException if validation fails or destination invalid
+     */
+    @Transactional  // CRITICAL: Ensures both transactions or neither
+    public FermTransaction[] transferToFermenter(Integer sourceBatchId, String destinationTankLabel) {
+
+        // 1. Validate source batch exists and is active
+        FermBatch sourceBatch = getBatchById(sourceBatchId);
+        if (!sourceBatch.isActive()) {
+            throw new RuntimeException("Cannot transfer from completed batch");
+        }
+
+        // 2. Get source tank and validate it has volume
+        FermTank sourceTank = getTankById(sourceBatch.getTankId());
+        BigDecimal transferQuantity = sourceTank.getCurrentQuantity();
+        if (transferQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Source tank is empty - nothing to transfer");
+        }
+
+        // 3. Validate destination tank exists and has active batch
+        FermTank destTank = getTankByLabel(destinationTankLabel);
+        if (destTank.getCurrentBatchId() == null) {
+            throw new RuntimeException("Destination tank must have an active batch. Please start a batch first.");
+        }
+        FermBatch destBatch = getBatchById(destTank.getCurrentBatchId());
+
+        // 4. Validate capacity
+        BigDecimal newDestQuantity = destTank.getCurrentQuantity().add(transferQuantity);
+        if (newDestQuantity.compareTo(destTank.getCapacity()) > 0) {
+            throw new RuntimeException(String.format(
+                "Transfer would exceed destination tank capacity (%.1f + %.1f > %.1f gal)",
+                destTank.getCurrentQuantity(), transferQuantity, destTank.getCapacity()
+            ));
+        }
+
+        // 5. Get transaction types from cache
+        TransactionType transferOutType = transactionTypeCache.get(4);  // Transfer Out
+        TransactionType transferInType = transactionTypeCache.get(8);   // Transfer In (NEW)
+        if (transferOutType == null || transferInType == null) {
+            throw new RuntimeException("Transfer transaction types not found in cache");
+        }
+
+        UnitType gallonsUnit = unitTypeRepository.findByAbbreviation("gal")
+            .orElseThrow(() -> new RuntimeException("Gallons unit not found"));
+
+        // 6. Create Transfer Out transaction on source batch
+        String transferOutNotes = String.format("Transferred to %s", destTank.getLabel());
+        FermTransaction transferOut = new FermTransaction(
+            sourceBatch.getId(),
+            transferOutType,
+            transferQuantity,
+            gallonsUnit,
+            LocalDateTime.now(),
+            1,  // TODO: Get user ID from authentication context
+            transferOutNotes
+        );
+        transferOut.setRelatedTankId(destTank.getId());  // Store destination tank ID
+        transferOut = transactionRepository.save(transferOut);
+
+        // 7. Create Transfer In transaction on destination batch
+        String transferInNotes = String.format("Tank %s - Batch: %d",
+            sourceTank.getLabel(),
+            sourceBatch.getId()
+        );
+        FermTransaction transferIn = new FermTransaction(
+            destBatch.getId(),
+            transferInType,
+            transferQuantity,
+            gallonsUnit,
+            LocalDateTime.now(),
+            1,  // TODO: Get user ID from authentication context
+            transferInNotes
+        );
+        transferIn.setRelatedTankId(sourceTank.getId());  // Store source tank ID
+        transferIn = transactionRepository.save(transferIn);
+
+        // 8. Update tank quantities
+        sourceTank.setCurrentQuantity(BigDecimal.ZERO);
+        destTank.setCurrentQuantity(newDestQuantity);
+        tankRepository.save(sourceTank);
+        tankRepository.save(destTank);
+
+        // 9. Complete source batch (calls existing completeBatch method)
+        completeBatch(sourceBatch.getId());
+
+        // 10. Return both transactions for verification
+        return new FermTransaction[] { transferOut, transferIn };
+    }
 }

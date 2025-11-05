@@ -213,4 +213,66 @@ public class FermentersController {
             return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
+
+    // ==================== Fermenter Transfer Endpoints ====================
+
+    /**
+     * Transfer entire remaining volume from source batch to destination fermenter tank.
+     * Creates two transactions atomically and completes the source batch.
+     */
+    @PostMapping("/api/batches/{batchId}/transfer")
+    @ResponseBody
+    public ResponseEntity<?> transferToFermenter(
+            @PathVariable Integer batchId,
+            @RequestBody TransactionRequest request) {
+        try {
+            // Validate destination provided
+            if (request.getDestinationTankLabel() == null ||
+                request.getDestinationTankLabel().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Destination tank is required"
+                ));
+            }
+
+            // Call service to perform atomic transfer
+            FermTransaction[] transactions = fermenterService.transferToFermenter(
+                batchId,
+                request.getDestinationTankLabel()
+            );
+
+            // Return success with both transaction IDs
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Transfer completed successfully",
+                "transferOutId", transactions[0].getId(),
+                "transferInId", transactions[1].getId()
+            ));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Get list of all fermenter tanks for dropdown selection.
+     * Returns tank label, active batch status, and capacity info.
+     */
+    @GetMapping("/api/fermenters/list")
+    @ResponseBody
+    public List<Map<String, Object>> getFermentersList() {
+        return fermenterService.getAllTanks().stream()
+            .map(tank -> {
+                Map<String, Object> tankData = new HashMap<>();
+                tankData.put("label", tank.getLabel());
+                tankData.put("hasActiveBatch", tank.getCurrentBatchId() != null);
+                tankData.put("currentQuantity", tank.getCurrentQuantity());
+                tankData.put("capacity", tank.getCapacity());
+                return tankData;
+            })
+            .collect(java.util.stream.Collectors.toList());
+    }
 }
