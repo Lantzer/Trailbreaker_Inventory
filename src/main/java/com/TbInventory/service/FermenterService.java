@@ -100,21 +100,11 @@ public class FermenterService {
      * @return The created tank
      * @throws RuntimeException if validation fails
      */
-    public FermTank createTank(String label, BigDecimal capacity, Integer capacityUnitId) {
+    public FermTank createTank(String label, BigDecimal capacity) {
         // Validation: Check for duplicate label
         if (tankRepository.existsByLabel(label)) {
             throw new RuntimeException("Tank with label '" + label + "' already exists");
         }
-
-        /* REMOVED: Capacity is always in gallons
-        // Validation: Capacity unit must be a volume unit
-         UnitType unit = unitTypeRepository.findById(capacityUnitId)
-             .orElseThrow(() -> new RuntimeException("Unit type not found: " + capacityUnitId));
-
-        if (!unit.getIsVolume()) {
-            throw new RuntimeException("Tank capacity must use volume units (barrels, gallons), not weight units");
-        }
-        */
 
         FermTank tank = new FermTank(label, capacity);
         return tankRepository.save(tank);
@@ -271,7 +261,13 @@ public class FermenterService {
             throw new RuntimeException("Invalid transaction type: " + transactionTypeId);
         }
 
-        // 4. quantityUnit is always gallons for fermenter
+        // 4. ensure initial quantity does not exceed tank capacity
+        if (initialQuantity.compareTo(tank.getCapacity()) > 0) {
+            throw new RuntimeException("Initial quantity (" + initialQuantity +
+                " gallons) exceeds tank capacity (" + tank.getCapacity() + " gallons)");
+        }
+        
+        // 5. quantityUnit is always gallons for fermenter
         UnitType quantityUnit = unitTypeRepository.findByAbbreviation("gal")
             .orElseThrow(() -> new RuntimeException("Volume unit 'gal' not found"));
         
@@ -291,7 +287,7 @@ public class FermenterService {
         );
         transactionRepository.save(transaction);
 
-        // 4. Update tank with batch and quantity
+        // 6. Update tank with batch and quantity
         tank.setCurrentBatchId(batch.getId());
         if (transaction.affectsTankQuantity()) {
             tank.setCurrentQuantity(initialQuantity);

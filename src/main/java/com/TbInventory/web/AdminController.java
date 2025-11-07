@@ -51,10 +51,9 @@ public class AdminController {
     public String createTank(
             @RequestParam("label") String label,
             @RequestParam("capacity") BigDecimal capacity,
-            @RequestParam("capacityUnitId") Integer capacityUnitId,
             RedirectAttributes redirectAttributes) {
         try {
-            fermenterService.createTank(label, capacity, capacityUnitId);
+            fermenterService.createTank(label, capacity);
             redirectAttributes.addFlashAttribute("success", "Tank '" + label + "' created successfully");
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -145,5 +144,19 @@ public class AdminController {
         model.addAttribute("title", "View Fermenter Batches");
         model.addAttribute("batches", fermenterService.getAllFermenterBatches());
         return "admin/fermenter-batches";
+    }
+
+    @GetMapping("/batches/{batchId}/details")
+    public String batchDetails(@PathVariable Integer batchId, Model model) {
+        // Get batch details (1 DB call)
+        var batch = fermenterService.getBatchById(batchId);
+        model.addAttribute("batch", batch);
+
+        // Get transaction history (1 DB call)
+        var transactions = fermenterService.getBatchTransactions(batchId);
+        model.addAttribute("transactions", transactions);
+
+        // Return just the modal body fragment
+        return "admin/fragments/batch-details :: batch-details-content";
     }
 }
