@@ -60,7 +60,9 @@
                                      data-start-date=${batch.startDate},
                                      data-completion-date=${batch.completionDate},
                                      data-days=${batch.daysInFermentation},
-                                     data-active=${batch.active}">
+                                     data-active=${batch.active}"
+                            th:onclick="'openBatchModal(' + ${batch.id} + ')'"
+                            style="cursor: pointer;">
                             <td th:text="${batch.id}">1</td>
                             <td th:text="${batch.batchName}">Left Turn IPA</td>
                             <td>
@@ -228,6 +230,65 @@
 
             .mt-4 {
                 margin-top: 2rem;
+            }
+
+            /* Modal Styles */
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+
+            .modal-content {
+                background-color: #fff;
+                margin: 2% auto;
+                padding: 0;
+                border-radius: 8px;
+                width: 90%;
+                max-width: 900px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            }
+
+            .modal-header {
+                padding: 1.5rem;
+                background-color: #34495e;
+                color: white;
+                border-radius: 8px 8px 0 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .modal-header h2 {
+                margin: 0;
+                font-size: 1.5rem;
+            }
+
+            .modal-close {
+                background: none;
+                border: none;
+                color: white;
+                font-size: 2rem;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+                transition: opacity 0.2s;
+            }
+
+            .modal-close:hover {
+                opacity: 0.7;
+            }
+
+            .modal-body {
+                padding: 1.5rem;
+                max-height: 70vh;
+                overflow-y: auto;
             }
         </style>
 
@@ -434,6 +495,72 @@
                     }
                 });
             }
+
+            // ==================== Batch Modal Functions ====================
+
+            function openBatchModal(batchId) {
+                const modal = document.getElementById('batchModal');
+                const modalBody = document.querySelector('#batchModal .modal-body');
+                const modalTitle = document.getElementById('batch-modal-title');
+
+                // Update modal title
+                modalTitle.textContent = 'Batch #' + batchId + ' - Details';
+
+                // Show loading message
+                modalBody.innerHTML = '<p style="text-align: center; padding: 2rem;">Loading batch details...</p>';
+
+                // Show modal
+                modal.style.display = 'block';
+
+                // Fetch batch details HTML via AJAX
+                fetch('/admin/batches/' + batchId + '/details')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to load batch details');
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        // Inject the HTML fragment into the modal body
+                        modalBody.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Error loading batch details:', error);
+                        modalBody.innerHTML = '<p style="text-align: center; color: #e74c3c; padding: 2rem;">Error loading batch details. Please try again.</p>';
+                    });
+            }
+
+            function closeBatchModal() {
+                document.getElementById('batchModal').style.display = 'none';
+            }
+
+            // Close modal when clicking outside of it
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('batchModal');
+                if (event.target == modal) {
+                    closeBatchModal();
+                }
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeBatchModal();
+                }
+            });
         </script>
+
+        <!-- Batch Details Modal -->
+        <div id="batchModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="batch-modal-title">Batch Details</h2>
+                    <button class="modal-close" onclick="closeBatchModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="text-align: center; padding: 2rem;">Loading...</p>
+                </div>
+            </div>
+        </div>
     </body>
 </html>
